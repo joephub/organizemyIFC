@@ -1,7 +1,7 @@
 'use strict';
 
-    const STORAGE_KEY = 'organize-my-ifc-settings-v2';
-    const LEGACY_STORAGE_KEY = 'organize-my-ifc-settings-v1';
+    const STORAGE_KEY = 'organize-my-ifc-settings-v3';
+    const PREVIOUS_STORAGE_KEYS = ['organize-my-ifc-settings-v2', 'organize-my-ifc-settings-v1'];
     const NLSFB_URL = './nlsfb2021.json';
     const FIXED_CLASSIFICATION_ALIASES = ['Uniformat', 'Uniformat Classification'];
 
@@ -22,7 +22,9 @@
     const DEFAULT_COMMON_PROPERTY_MAPPINGS = [
       { sourceName: 'IsExternal', outputName: 'Buiten' },
       { sourceName: 'LoadBearing', outputName: 'Dragend' },
-      { sourceName: 'FireRating', outputName: 'Brandwerendheid' },
+      { sourceName: 'FireRating', outputName: 'WBDBO' },
+      { sourceName: 'AcousticRating', outputName: 'Geluidwerendheid' },
+      { sourceName: 'ThermalTransmittance', outputName: 'Warmtedoorgangscoëfficiënt' },
     ];
 
     const DEFAULT_SETTINGS = {
@@ -36,8 +38,7 @@
       settingsView: document.getElementById('settingsView'),
       openSettingsButton: document.getElementById('openSettingsButton'),
       backButton: document.getElementById('backButton'),
-      cancelSettingsButton: document.getElementById('cancelSettingsButton'),
-      saveSettingsButton: document.getElementById('saveSettingsButton'),
+      restoreSettingsButton: document.getElementById('restoreSettingsButton'),
       attributeList: document.getElementById('attributeList'),
       propertyMappingList: document.getElementById('propertyMappingList'),
       addPropertyMappingButton: document.getElementById('addPropertyMappingButton'),
@@ -75,7 +76,6 @@
     let activeNlsfbEntries = [];
     let nlsfbReady = false;
     let settings = loadSettings();
-    let settingsSnapshot = JSON.stringify(settings);
 
     initialize();
 
@@ -99,22 +99,26 @@
 
     function bindEvents() {
       elements.openSettingsButton.addEventListener('click', () => {
-        settingsSnapshot = JSON.stringify(settings);
         renderSettings(settings);
         showView('settings');
       });
 
-      elements.backButton.addEventListener('click', cancelSettings);
-      elements.cancelSettingsButton.addEventListener('click', cancelSettings);
-      elements.saveSettingsButton.addEventListener('click', saveSettingsFromForm);
+      elements.backButton.addEventListener('click', () => {
+        syncSettingsFromForm();
+        showView('main');
+      });
+      elements.restoreSettingsButton.addEventListener('click', resetSettings);
       elements.addPropertyMappingButton.addEventListener('click', () => {
         appendPropertyMappingRow({ sourceName: '', outputName: '' }, true);
       });
+      elements.attributeList.addEventListener('input', syncSettingsFromForm);
+      elements.propertyMappingList.addEventListener('input', syncSettingsFromForm);
       elements.propertyMappingList.addEventListener('click', (event) => {
         const button = event.target.closest('[data-remove-mapping]');
         if (!button) return;
         const row = button.closest('[data-property-mapping-row]');
         if (row) row.remove();
+        syncSettingsFromForm();
       });
 
       elements.ifcFileInput.addEventListener('change', () => {
@@ -174,54 +178,59 @@
       window.scrollTo({ top: 0, behavior: 'instant' });
     }
 
-    function cancelSettings() {
-      settings = safeParse(settingsSnapshot, settings);
-      renderSettings(settings);
-      clearSettingsError();
-      showView('main');
-    }
-
-    function saveSettingsFromForm() {
+    function syncSettingsFromForm() {
+      settings = collectSettingsFromForm();
       try {
-        const collected = collectSettingsFromForm();
-        validateSettings(collected);
-        settings = collected;
-        try {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
-        } catch {
-          // Instellingen blijven voor deze sessie actief wanneer lokale opslag niet beschikbaar is.
-        }
-        settingsSnapshot = JSON.stringify(settings);
-        clearSettingsError();
-        showView('main');
-      } catch (error) {
-        showSettingsError(error.message || String(error));
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+      } catch {
+        // Instellingen blijven voor deze sessie actief wanneer lokale opslag niet beschikbaar is.
       }
+      clearSettingsError();
     }
 
     function resetSettings() {
       settings = clone(DEFAULT_SETTINGS);
       renderSettings(settings);
-      try { localStorage.removeItem(STORAGE_KEY); } catch {}
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+        for (const previousKey of PREVIOUS_STORAGE_KEYS) localStorage.removeItem(previousKey);
+      } catch {}
       clearSettingsError();
     }
 
     function loadSettings() {
       try {
         const current = localStorage.getItem(STORAGE_KEY);
-        const legacy = current ? null : localStorage.getItem(LEGACY_STORAGE_KEY);
-        const stored = JSON.parse(current || legacy || 'null');
-        const merged = mergeSettings(stored);
-        if (!current && legacy) {
-          try { localStorage.setItem(STORAGE_KEY, JSON.stringify(merged)); } catch {}
+        let storedText = current;
+        let migratedFromKey = null;
+
+        if (!storedText) {
+          for (const previousKey of PREVIOUS_STORAGE_KEYS) {
+            const previousValue = localStorage.getItem(previousKey);
+            if (!previousValue) continue;
+            storedText = previousValue;
+            migratedFromKey = previousKey;
+            break;
+          }
         }
+
+        const stored = JSON.parse(storedText || 'null');
+        const merged = mergeSettings(stored, Boolean(migratedFromKey));
+
+        if (!current && storedText) {
+          try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+            for (const previousKey of PREVIOUS_STORAGE_KEYS) localStorage.removeItem(previousKey);
+          } catch {}
+        }
+
         return merged;
       } catch {
         return clone(DEFAULT_SETTINGS);
       }
     }
 
-    function mergeSettings(stored) {
+    function mergeSettings(stored, migrateLegacyDefaults = false) {
       const base = clone(DEFAULT_SETTINGS);
       if (!stored || typeof stored !== 'object') return base;
 
@@ -240,17 +249,42 @@
       });
 
       if (Array.isArray(stored.commonPropertyMappings)) {
-        base.commonPropertyMappings = stored.commonPropertyMappings
+        const storedMappings = stored.commonPropertyMappings
           .map((mapping) => ({
             sourceName: String(mapping && mapping.sourceName || ''),
             outputName: String(mapping && mapping.outputName || ''),
           }))
           .filter((mapping) => mapping.sourceName || mapping.outputName);
+        base.commonPropertyMappings = migrateLegacyDefaults
+          ? migrateCommonPropertyMappings(storedMappings)
+          : storedMappings;
       }
 
       base.classificationAliases = [...FIXED_CLASSIFICATION_ALIASES];
 
       return base;
+    }
+
+    function migrateCommonPropertyMappings(storedMappings) {
+      const migrated = storedMappings.map((mapping) => {
+        const sourceName = String(mapping.sourceName || '').trim();
+        const outputName = String(mapping.outputName || '').trim();
+        if (sourceName.toLowerCase() === 'firerating' && outputName === 'Brandwerendheid') {
+          return { sourceName, outputName: 'WBDBO' };
+        }
+        return { sourceName, outputName };
+      });
+
+      const presentSources = new Set(migrated.map((mapping) => mapping.sourceName.toLowerCase()));
+      for (const defaultMapping of DEFAULT_COMMON_PROPERTY_MAPPINGS) {
+        const sourceKey = defaultMapping.sourceName.toLowerCase();
+        if (!['acousticrating', 'thermaltransmittance'].includes(sourceKey)) continue;
+        if (presentSources.has(sourceKey)) continue;
+        migrated.push({ ...defaultMapping });
+        presentSources.add(sourceKey);
+      }
+
+      return migrated;
     }
 
     function renderSettings(value) {
@@ -292,7 +326,7 @@
         </div>
         <div class="compact-field">
           <label>Naam in jouw tabje</label>
-          <input class="input" type="text" maxlength="255" spellcheck="false" data-mapping-output value="${escapeHtml(mapping.outputName || '')}" placeholder="bijvoorbeeld Akoestische waarde">
+          <input class="input" type="text" maxlength="255" spellcheck="false" data-mapping-output value="${escapeHtml(mapping.outputName || '')}" placeholder="bijvoorbeeld Geluidwerendheid">
         </div>
         <button class="button button-quiet remove-mapping-button" type="button" data-remove-mapping aria-label="Koppeling verwijderen">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true">

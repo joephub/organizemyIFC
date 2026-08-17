@@ -6,7 +6,7 @@ Een statische webapp die aanwezige IFC informatie bundelt in één nieuw eigensc
 
 1. Plaats alle bestanden uit deze map in de hoofdmap van een GitHub repository.
 2. Open in GitHub `Settings` en daarna `Pages`.
-3. Kies `Deploy from a branch` en selecteer de gewenste branch met map `/root`.
+3. Kies `Deploy from a branch` en selecteer de gewenste branch met map `/(root)`.
 4. Open daarna de door GitHub Pages aangemaakte website.
 
 Er is geen build stap, package manager of servercode nodig.
@@ -37,4 +37,19 @@ Ondersteunde STEP IFC schema's:
 
 De tool voegt alleen waarden toe die al in het model aanwezig zijn. Standaard eigenschappen worden uitsluitend gelezen uit IFC PropertySets waarvan de naam past bij `Pset_.*Common`.
 
+De standaardkoppelingen zijn:
+
+- `IsExternal` naar `Buiten`
+- `LoadBearing` naar `Dragend`
+- `FireRating` naar `WBDBO`
+- `AcousticRating` naar `Geluidwerendheid`
+- `ThermalTransmittance` naar `Warmtedoorgangscoëfficiënt`
+
+Een koppeling wordt alleen toegevoegd wanneer de bronwaarde werkelijk op het IFC object aanwezig is.
+
 In de geavanceerde instellingen worden de vaste IFC velden aangeduid met hun herkenbare termen, waaronder `IFC entiteit` en `IFC PredefinedType`.
+
+Wijzigingen in de geavanceerde instellingen worden direct toegepast en lokaal in de browser bewaard. Met `Herstel standaardinstellingen` worden alle namen en koppelingen teruggezet naar de meegeleverde standaard.
+
+
+De visualisatie toont `FireRating` aan de modelzijde en `WBDBO` in het eigenschappen tabje. De waarde blijft daarbij één op één gelijk.

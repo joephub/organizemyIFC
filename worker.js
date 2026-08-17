@@ -1273,7 +1273,9 @@ function normalizeCommonPropertyMappings(mappings, legacyConfig) {
   const defaults = [
     { sourceName: legacyConfig.isExternalPropertyName || 'IsExternal', outputName: 'Buiten' },
     { sourceName: legacyConfig.loadBearingPropertyName || 'LoadBearing', outputName: 'Dragend' },
-    { sourceName: legacyConfig.fireRatingPropertyName || 'FireRating', outputName: 'Brandwerendheid' },
+    { sourceName: legacyConfig.fireRatingPropertyName || 'FireRating', outputName: 'WBDBO' },
+    { sourceName: 'AcousticRating', outputName: 'Geluidwerendheid' },
+    { sourceName: 'ThermalTransmittance', outputName: 'Warmtedoorgangscoëfficiënt' },
   ];
 
   const source = Array.isArray(mappings) ? mappings : defaults;

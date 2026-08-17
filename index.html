@@ -78,7 +78,7 @@
               <g class="source-tag" transform="translate(204 10)">
                 <rect width="172" height="48" rx="10"/>
                 <circle cx="20" cy="24" r="5" class="dot-green"/>
-                <text x="34" y="20" class="tag-label">Brandwerendheid</text>
+                <text x="34" y="20" class="tag-label tag-label-code">FireRating</text>
                 <text x="34" y="36" class="tag-value">60 minuten</text>
               </g>
               <g class="source-tag" transform="translate(212 236)">
@@ -104,7 +104,7 @@
                   <line x1="18" y1="90" x2="180" y2="90"/>
                   <text x="18" y="111">Bouwlaag</text><text x="180" y="111" text-anchor="end">Eerste verdieping</text>
                   <line x1="18" y1="123" x2="180" y2="123"/>
-                  <text x="18" y="144">Brandwerendheid</text><text x="180" y="144" text-anchor="end">60 minuten</text>
+                  <text x="18" y="144">WBDBO</text><text x="180" y="144" text-anchor="end">60 minuten</text>
                   <line x1="18" y1="156" x2="180" y2="156"/>
                   <text x="18" y="177">NL-SfB code</text><text x="180" y="177" text-anchor="end">21.10</text>
                 </g>
@@ -236,10 +236,13 @@
         </div>
 
         <div class="settings-footer">
-          <span class="settings-hint">Lege waarden worden nooit toegevoegd.</span>
           <div class="settings-footer-actions">
-            <button class="button button-secondary" id="cancelSettingsButton" type="button">Annuleren</button>
-            <button class="button button-primary" id="saveSettingsButton" type="button">Opslaan</button>
+            <button class="button button-secondary" id="restoreSettingsButton" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true">
+                <path d="M4 8V4m0 0h4M4 4l4.2 4.2A7 7 0 1 1 6 17"/>
+              </svg>
+              Herstel standaardinstellingen
+            </button>
           </div>
         </div>
       </section>
