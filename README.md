@@ -36,3 +36,5 @@ Ondersteunde STEP IFC schema's:
 - IFC 4x3
 
 De tool voegt alleen waarden toe die al in het model aanwezig zijn. Standaard eigenschappen worden uitsluitend gelezen uit IFC PropertySets waarvan de naam past bij `Pset_.*Common`.
+
+In de geavanceerde instellingen worden de vaste IFC velden aangeduid met hun herkenbare termen, waaronder `IFC entiteit` en `IFC PredefinedType`.

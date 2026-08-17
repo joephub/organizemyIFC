@@ -1249,7 +1249,7 @@ function normalizeAttributeConfig(attributes) {
     ['name', 'Naam', 'label'],
     ['typeName', 'Type', 'label'],
     ['ifcEntity', 'IFC entiteit', 'label'],
-    ['predefinedType', 'IFC typeaanduiding', 'label'],
+    ['predefinedType', 'IFC PredefinedType', 'label'],
     ['objectType', 'Objecttype', 'label'],
   ];
 

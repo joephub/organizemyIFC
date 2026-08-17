@@ -1,6 +1,7 @@
 'use strict';
 
-    const STORAGE_KEY = 'organize-my-ifc-settings-v1';
+    const STORAGE_KEY = 'organize-my-ifc-settings-v2';
+    const LEGACY_STORAGE_KEY = 'organize-my-ifc-settings-v1';
     const NLSFB_URL = './nlsfb2021.json';
     const FIXED_CLASSIFICATION_ALIASES = ['Uniformat', 'Uniformat Classification'];
 
@@ -8,10 +9,15 @@
       { key: 'storey', label: 'Bouwlaag', source: 'Bouwlaag van het element', outputName: 'Bouwlaag' },
       { key: 'name', label: 'Naam', source: 'Naam van het element', outputName: 'Naam' },
       { key: 'typeName', label: 'Type', source: 'Naam van het gekoppelde type', outputName: 'Type' },
-      { key: 'ifcEntity', label: 'IFC elementsoort', source: 'Soort IFC element', outputName: 'Elementsoort' },
-      { key: 'predefinedType', label: 'IFC typeaanduiding', source: 'Typeaanduiding uit IFC', outputName: 'Typeaanduiding' },
+      { key: 'ifcEntity', label: 'IFC entiteit', source: 'Naam van de IFC entiteit, bijvoorbeeld IfcWall', outputName: 'IFC entiteit' },
+      { key: 'predefinedType', label: 'IFC PredefinedType', source: 'Vooraf gedefinieerd type uit het IFC schema', outputName: 'IFC PredefinedType' },
       { key: 'objectType', label: 'Objecttype', source: 'Objecttype van het element', outputName: 'Objecttype' },
     ];
+
+    const LEGACY_DEFAULT_ATTRIBUTE_NAMES = {
+      ifcEntity: 'Elementsoort',
+      predefinedType: 'Typeaanduiding',
+    };
 
     const DEFAULT_COMMON_PROPERTY_MAPPINGS = [
       { sourceName: 'IsExternal', outputName: 'Buiten' },
@@ -202,8 +208,14 @@
 
     function loadSettings() {
       try {
-        const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
-        return mergeSettings(stored);
+        const current = localStorage.getItem(STORAGE_KEY);
+        const legacy = current ? null : localStorage.getItem(LEGACY_STORAGE_KEY);
+        const stored = JSON.parse(current || legacy || 'null');
+        const merged = mergeSettings(stored);
+        if (!current && legacy) {
+          try { localStorage.setItem(STORAGE_KEY, JSON.stringify(merged)); } catch {}
+        }
+        return merged;
       } catch {
         return clone(DEFAULT_SETTINGS);
       }
@@ -219,9 +231,11 @@
       const attributeMap = new Map(storedAttributes.map((attribute) => [attribute.key, attribute]));
       base.attributes = ATTRIBUTE_DEFINITIONS.map((definition) => {
         const supplied = attributeMap.get(definition.key) || {};
+        const suppliedName = String(supplied.outputName || '');
+        const legacyDefaultName = LEGACY_DEFAULT_ATTRIBUTE_NAMES[definition.key];
         return {
           key: definition.key,
-          outputName: String(supplied.outputName || definition.outputName),
+          outputName: suppliedName && suppliedName !== legacyDefaultName ? suppliedName : definition.outputName,
         };
       });
 
