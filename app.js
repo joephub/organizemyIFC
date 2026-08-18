@@ -1,9 +1,9 @@
 'use strict';
 
-    const STORAGE_KEY = 'organize-my-ifc-settings-v3';
-    const PREVIOUS_STORAGE_KEYS = ['organize-my-ifc-settings-v2', 'organize-my-ifc-settings-v1'];
+    const STORAGE_KEY = 'organize-my-ifc-settings-v4';
+    const PREVIOUS_STORAGE_KEYS = ['organize-my-ifc-settings-v3', 'organize-my-ifc-settings-v2', 'organize-my-ifc-settings-v1'];
     const NLSFB_URL = './nlsfb2021.json';
-    const FIXED_CLASSIFICATION_ALIASES = ['Uniformat', 'Uniformat Classification'];
+    const DEFAULT_CLASSIFICATION_ALIASES = ['Uniformat', 'Uniformat Classification'];
 
     const ATTRIBUTE_DEFINITIONS = [
       { key: 'storey', label: 'Bouwlaag', source: 'Bouwlaag van het element', outputName: 'Bouwlaag' },
@@ -30,7 +30,7 @@
     const DEFAULT_SETTINGS = {
       attributes: ATTRIBUTE_DEFINITIONS.map((attribute) => ({ key: attribute.key, outputName: attribute.outputName })),
       commonPropertyMappings: DEFAULT_COMMON_PROPERTY_MAPPINGS.map((mapping) => ({ ...mapping })),
-      classificationAliases: [...FIXED_CLASSIFICATION_ALIASES],
+      classificationAliases: [...DEFAULT_CLASSIFICATION_ALIASES],
     };
 
     const elements = {
@@ -42,6 +42,8 @@
       attributeList: document.getElementById('attributeList'),
       propertyMappingList: document.getElementById('propertyMappingList'),
       addPropertyMappingButton: document.getElementById('addPropertyMappingButton'),
+      classificationAliasList: document.getElementById('classificationAliasList'),
+      addClassificationAliasButton: document.getElementById('addClassificationAliasButton'),
       ifcFileInput: document.getElementById('ifcFileInput'),
       dropzone: document.getElementById('dropzone'),
       emptyFileState: document.getElementById('emptyFileState'),
@@ -111,12 +113,23 @@
       elements.addPropertyMappingButton.addEventListener('click', () => {
         appendPropertyMappingRow({ sourceName: '', outputName: '' }, true);
       });
+      elements.addClassificationAliasButton.addEventListener('click', () => {
+        appendClassificationAliasRow('', true);
+      });
       elements.attributeList.addEventListener('input', syncSettingsFromForm);
       elements.propertyMappingList.addEventListener('input', syncSettingsFromForm);
       elements.propertyMappingList.addEventListener('click', (event) => {
         const button = event.target.closest('[data-remove-mapping]');
         if (!button) return;
         const row = button.closest('[data-property-mapping-row]');
+        if (row) row.remove();
+        syncSettingsFromForm();
+      });
+      elements.classificationAliasList.addEventListener('input', syncSettingsFromForm);
+      elements.classificationAliasList.addEventListener('click', (event) => {
+        const button = event.target.closest('[data-remove-classification-alias]');
+        if (!button) return;
+        const row = button.closest('[data-classification-alias-row]');
         if (row) row.remove();
         syncSettingsFromForm();
       });
@@ -260,7 +273,9 @@
           : storedMappings;
       }
 
-      base.classificationAliases = [...FIXED_CLASSIFICATION_ALIASES];
+      if (Array.isArray(stored.classificationAliases)) {
+        base.classificationAliases = cleanClassificationAliases(stored.classificationAliases);
+      }
 
       return base;
     }
@@ -313,6 +328,11 @@
         appendPropertyMappingRow(mapping, false);
       }
 
+      elements.classificationAliasList.innerHTML = '';
+      for (const alias of value.classificationAliases || []) {
+        appendClassificationAliasRow(alias, false);
+      }
+
     }
 
     function appendPropertyMappingRow(mapping, focusSource) {
@@ -341,6 +361,41 @@
       }
     }
 
+    function appendClassificationAliasRow(alias, focusInput) {
+      const row = document.createElement('div');
+      row.className = 'classification-alias-row';
+      row.setAttribute('data-classification-alias-row', '');
+      row.innerHTML = `
+        <div class="compact-field">
+          <label>Naam in het model</label>
+          <input class="input" type="text" maxlength="255" spellcheck="false" data-classification-alias value="${escapeHtml(alias || '')}" placeholder="bijvoorbeeld Assembly Code">
+        </div>
+        <button class="button button-quiet remove-mapping-button" type="button" data-remove-classification-alias aria-label="Classificatiemethode verwijderen">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true">
+            <path d="M4 7h16M9 7V4h6v3m-8 0 1 13h8l1-13M10 11v5m4-5v5"/>
+          </svg>
+        </button>
+      `;
+      elements.classificationAliasList.appendChild(row);
+      if (focusInput) {
+        const input = row.querySelector('[data-classification-alias]');
+        if (input) input.focus();
+      }
+    }
+
+    function cleanClassificationAliases(values) {
+      const result = [];
+      const seen = new Set();
+      for (const value of Array.isArray(values) ? values : []) {
+        const alias = String(value || '').trim();
+        const key = alias.toLocaleLowerCase('nl-NL');
+        if (!alias || seen.has(key)) continue;
+        seen.add(key);
+        result.push(alias);
+      }
+      return result;
+    }
+
     function collectSettingsFromForm() {
       const attributes = ATTRIBUTE_DEFINITIONS.map((definition) => ({
         key: definition.key,
@@ -354,10 +409,15 @@
         }))
         .filter((mapping) => mapping.sourceName || mapping.outputName);
 
+      const classificationAliases = cleanClassificationAliases(
+        Array.from(elements.classificationAliasList.querySelectorAll('[data-classification-alias]'))
+          .map((input) => input.value),
+      );
+
       return {
         attributes,
         commonPropertyMappings,
-        classificationAliases: [...FIXED_CLASSIFICATION_ALIASES],
+        classificationAliases,
       };
     }
 

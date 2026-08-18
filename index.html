@@ -202,8 +202,8 @@
           <div>
             <button class="button button-quiet back-button" id="backButton" type="button">← Terug</button>
             <span class="eyebrow">Geavanceerde instellingen</span>
-            <h1>Kies de namen van jouw eigenschappen</h1>
-            <p>Bepaal hoe bestaande informatie in jouw nieuwe tabje wordt genoemd.</p>
+            <h1>Pas de bundeling aan</h1>
+            <p>Stel namen, eigenschappen en herkenbare classificatienamen in.</p>
           </div>
         </div>
 
@@ -222,7 +222,6 @@
             <div class="section-heading">
               <div>
                 <h2>Standaard eigenschappen</h2>
-                <p>Alleen eigenschappen die werkelijk bij een object aanwezig zijn worden gebruikt.</p>
               </div>
               <button class="button button-secondary section-action" id="addPropertyMappingButton" type="button">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
@@ -230,6 +229,20 @@
               </button>
             </div>
             <div class="property-mapping-list" id="propertyMappingList"></div>
+          </section>
+
+          <section class="card settings-card">
+            <div class="section-heading">
+              <div>
+                <h2>Classificatiemethoden</h2>
+                <p>Alle classificatienamen met NL-SfB, NL/SfB, NLSfB of een vergelijkbare schrijfwijze worden automatisch meegenomen.</p>
+              </div>
+              <button class="button button-secondary section-action" id="addClassificationAliasButton" type="button">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+                Classificatienaam toevoegen
+              </button>
+            </div>
+            <div class="classification-alias-list" id="classificationAliasList"></div>
           </section>
 
           <div class="notice notice-error" id="settingsError" role="alert" hidden></div>

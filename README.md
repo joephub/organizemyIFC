@@ -49,7 +49,14 @@ Een koppeling wordt alleen toegevoegd wanneer de bronwaarde werkelijk op het IFC
 
 In de geavanceerde instellingen worden de vaste IFC velden aangeduid met hun herkenbare termen, waaronder `IFC entiteit` en `IFC PredefinedType`.
 
-Wijzigingen in de geavanceerde instellingen worden direct toegepast en lokaal in de browser bewaard. Met `Herstel standaardinstellingen` worden alle namen en koppelingen teruggezet naar de meegeleverde standaard.
+De standaard herkenbare classificatienamen zijn:
+
+- `Uniformat`
+- `Uniformat Classification`
+
+Classificatienamen met `NL-SfB`, `NL/SfB`, `NLSfB` of een vergelijkbare schrijfwijze worden automatisch herkend. Via het plusje kan een projectspecifieke naam worden toegevoegd, bijvoorbeeld `Assembly Code`. De ingevoerde naam wordt vergeleken met de naam van de classificatiemethode in het IFC model.
+
+Wijzigingen in de geavanceerde instellingen worden direct toegepast en lokaal in de browser bewaard. Met `Herstel standaardinstellingen` worden alle namen, koppelingen en classificatienamen teruggezet naar de meegeleverde standaard.
 
 
 De visualisatie toont `FireRating` aan de modelzijde en `WBDBO` in het eigenschappen tabje. De waarde blijft daarbij één op één gelijk.
@@ -65,5 +72,10 @@ Ieder geschikt IFC object met een geometrische representatie maar zonder herkenb
 
 Ruimtelijke objecten zoals `IfcBuildingStorey` krijgen deze code niet.
 
-De afgeleide classificatie heet `NL-SfB tabel 1 (2 cijferig)`. De naam van iedere classificatiereferentie wordt opgebouwd als `code | omschrijving`, bijvoorbeeld `53 | Water`.
+De afgeleide classificatie heet `NL-SfB tabel 1 (2 cijferig)`. De code blijft als afzonderlijke classificatiecode bewaard. De naam van de classificatiereferentie bevat alleen de omschrijving, bijvoorbeeld code `53` met de naam `Water`.
+
+Objecten met een ontbrekende NL-SfB code en objecten met een code die niet in `nlsfb2021.json` voorkomt, worden in deze tweecijferige classificatie samengevoegd onder:
+
+- code `XX`
+- omschrijving `Geen of onbekende NL-SfB codering`
 

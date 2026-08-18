@@ -8,6 +8,7 @@ const LEGACY_TWO_DIGIT_CLASSIFICATION_NAMES = ['NL-SfB tabel 1 - 2 cijferig'];
 const UNKNOWN_NLSFB_DESCRIPTION = 'Onbekende NL-SfB codering';
 const MISSING_NLSFB_CODE = 'XX';
 const MISSING_NLSFB_DESCRIPTION = 'Geen NL-SfB codering';
+const TWO_DIGIT_UNRESOLVED_NLSFB_DESCRIPTION = 'Geen of onbekende NL-SfB codering';
 
 self.onmessage = async (event) => {
   const message = event.data || {};
@@ -120,6 +121,7 @@ function processIfc(text, config, nlsfbEntries) {
     twoDigitCodesFound: 0,
     twoDigitClassificationReferencesCreated: 0,
     twoDigitClassificationRelationsCreated: 0,
+    twoDigitClassificationRelationsCleaned: 0,
     missingClassificationReferencesCreated: 0,
     missingClassificationRelationsCreated: 0,
     missingClassificationsAssigned: 0,
@@ -149,6 +151,7 @@ function processIfc(text, config, nlsfbEntries) {
   const duplicateClassSet = new Set();
   const elementRecords = [];
   const twoDigitAssignments = new Map();
+  const desiredTwoDigitCodeByElement = new Map();
   const missingClassificationElementIds = [];
 
   postProgress(30, 'Elementinformatie verzamelen');
@@ -224,10 +227,28 @@ function processIfc(text, config, nlsfbEntries) {
       const officialSource = canonicalSourceCode ? nlsfb.byCode.get(canonicalSourceCode) : null;
       if (rawSourceCode.toUpperCase() === MISSING_NLSFB_CODE) {
         sourceDescription = MISSING_NLSFB_DESCRIPTION;
+        twoDigitCode = MISSING_NLSFB_CODE;
+        twoDigitDescription = TWO_DIGIT_UNRESOLVED_NLSFB_DESCRIPTION;
       } else if (officialSource) {
         sourceDescription = officialSource.name;
+
+        const derivedCode = deriveTwoDigitCode(sourceCode);
+        if (derivedCode) {
+          const officialTwoDigit = nlsfb.byCode.get(derivedCode);
+          if (officialTwoDigit) {
+            twoDigitCode = derivedCode;
+            twoDigitDescription = officialTwoDigit.name;
+            twoDigitUri = officialTwoDigit.uri;
+          } else {
+            twoDigitCode = MISSING_NLSFB_CODE;
+            twoDigitDescription = TWO_DIGIT_UNRESOLVED_NLSFB_DESCRIPTION;
+            addWarning('NLSFB_TWO_DIGIT_NOT_FOUND', `Tweecijferige NL-SfB code ${derivedCode} staat niet in de geladen JSON.`, expressId);
+          }
+        }
       } else {
         sourceDescription = UNKNOWN_NLSFB_DESCRIPTION;
+        twoDigitCode = MISSING_NLSFB_CODE;
+        twoDigitDescription = TWO_DIGIT_UNRESOLVED_NLSFB_DESCRIPTION;
         summary.sourceDescriptionsMissing += 1;
         const key = rawSourceCode;
         if (key && !unresolvedCodeSet.has(key)) {
@@ -235,24 +256,13 @@ function processIfc(text, config, nlsfbEntries) {
           report.unresolvedClassificationCodes.push(key);
         }
       }
-
-      const derivedCode = deriveTwoDigitCode(sourceCode);
-      if (derivedCode) {
-        const officialTwoDigit = nlsfb.byCode.get(derivedCode);
-        if (officialTwoDigit) {
-          twoDigitCode = derivedCode;
-          twoDigitDescription = officialTwoDigit.name;
-          twoDigitUri = officialTwoDigit.uri;
-          summary.twoDigitCodesFound += 1;
-        } else {
-          addWarning('NLSFB_TWO_DIGIT_NOT_FOUND', `Tweecijferige NL-SfB code ${derivedCode} staat niet in de geladen JSON.`, expressId);
-        }
-      }
     } else {
       summary.sourceClassificationsMissing += 1;
       if (hasGeometry) {
         sourceCode = MISSING_NLSFB_CODE;
         sourceDescription = MISSING_NLSFB_DESCRIPTION;
+        twoDigitCode = MISSING_NLSFB_CODE;
+        twoDigitDescription = TWO_DIGIT_UNRESOLVED_NLSFB_DESCRIPTION;
         missingClassificationElementIds.push(expressId);
         summary.missingClassificationsAssigned += 1;
       }
@@ -268,6 +278,8 @@ function processIfc(text, config, nlsfbEntries) {
     };
 
     if (twoDigitCode) {
+      summary.twoDigitCodesFound += 1;
+      desiredTwoDigitCodeByElement.set(expressId, twoDigitCode);
       if (!twoDigitAssignments.has(twoDigitCode)) {
         twoDigitAssignments.set(twoDigitCode, {
           code: twoDigitCode,
@@ -462,12 +474,14 @@ function processIfc(text, config, nlsfbEntries) {
     index,
     classificationSystemIdsToNormalize,
     twoDigitClassificationSystemIds,
+    desiredTwoDigitCodeByElement,
     nlsfb,
     canonicalClassificationName,
     twoDigitClassificationName,
   );
   summary.classificationSystemsNormalized = rewritten.systemNamesChangedCount;
   summary.classificationDescriptionsNormalized = rewritten.referenceNamesChangedCount;
+  summary.twoDigitClassificationRelationsCleaned = rewritten.twoDigitRelationsCleanedCount;
 
   if (!newLines.length && rewritten.changedCount === 0) {
     throw new Error('Er is geen nieuwe informatie gevonden om te structureren.');
@@ -1217,9 +1231,17 @@ function resolveClassificationSource(sourceId, index, visited) {
 }
 
 function normalizeAliases(input) {
-  const defaults = ['NL-SfB tabel 1', 'Uniformat', 'Uniformat Classification'];
   const values = Array.isArray(input) ? input : String(input || '').split(/\r?\n/);
-  return Array.from(new Set([...defaults, ...values].map((value) => String(value || '').trim()).filter(Boolean)));
+  const aliases = [];
+  const seen = new Set();
+  for (const value of values) {
+    const alias = String(value || '').trim();
+    const normalized = normalizeSearchText(alias);
+    if (!alias || !normalized || seen.has(normalized)) continue;
+    seen.add(normalized);
+    aliases.push(alias);
+  }
+  return aliases;
 }
 
 function findAliasIndex(systemName, aliases) {
@@ -1305,6 +1327,7 @@ function rewriteClassificationMetadata(
   index,
   primaryClassificationIds,
   twoDigitClassificationIds,
+  desiredTwoDigitCodeByElement,
   nlsfb,
   canonicalName,
   twoDigitName,
@@ -1312,6 +1335,7 @@ function rewriteClassificationMetadata(
   const replacements = [];
   let systemNamesChangedCount = 0;
   let referenceNamesChangedCount = 0;
+  let twoDigitRelationsCleanedCount = 0;
 
   for (const entity of entities.values()) {
     if (!Number.isInteger(entity.start) || !Number.isInteger(entity.end)) continue;
@@ -1324,6 +1348,39 @@ function rewriteClassificationMetadata(
 
       replacements.push(createEntityArgumentReplacement(entity, 3, desiredName));
       systemNamesChangedCount += 1;
+      continue;
+    }
+
+    if (entity.type === 'IFCRELASSOCIATESCLASSIFICATION') {
+      const referenceId = getSingleRef(entity.args[5]);
+      const reference = referenceId ? index.classificationRefs.get(referenceId) : null;
+      if (!reference) continue;
+
+      const source = resolveClassificationSource(reference.sourceId, index, new Set());
+      if (!source.id || !twoDigitClassificationIds.has(source.id)) continue;
+
+      const rawReferenceCode = String(reference.code || '').trim();
+      const referenceCode = rawReferenceCode.toUpperCase() === MISSING_NLSFB_CODE
+        ? MISSING_NLSFB_CODE
+        : deriveTwoDigitCode(rawReferenceCode) || rawReferenceCode;
+      const relatedObjectIds = getRefIds(entity.args[4]);
+      const retainedObjectIds = relatedObjectIds.filter((objectId) => {
+        const desiredCode = desiredTwoDigitCodeByElement.get(objectId);
+        return !desiredCode || desiredCode === referenceCode;
+      });
+
+      if (retainedObjectIds.length === relatedObjectIds.length) continue;
+
+      if (retainedObjectIds.length) {
+        replacements.push(createEntityRawArgumentReplacement(
+          entity,
+          4,
+          `(${retainedObjectIds.map((id) => `#${id}`).join(',')})`,
+        ));
+      } else {
+        replacements.push({ start: entity.start, end: entity.end, value: '' });
+      }
+      twoDigitRelationsCleanedCount += relatedObjectIds.length - retainedObjectIds.length;
       continue;
     }
 
@@ -1341,8 +1398,8 @@ function rewriteClassificationMetadata(
       const twoDigitCode = deriveTwoDigitCode(reference.code) || String(reference.code || '').trim();
       const official = twoDigitCode ? nlsfb.byCode.get(twoDigitCode) : null;
       const description = twoDigitCode === MISSING_NLSFB_CODE
-        ? MISSING_NLSFB_DESCRIPTION
-        : official ? official.name : UNKNOWN_NLSFB_DESCRIPTION;
+        ? TWO_DIGIT_UNRESOLVED_NLSFB_DESCRIPTION
+        : official ? official.name : TWO_DIGIT_UNRESOLVED_NLSFB_DESCRIPTION;
       desiredName = formatTwoDigitReferenceName(twoDigitCode, description);
     }
 
@@ -1362,6 +1419,7 @@ function rewriteClassificationMetadata(
     changedCount: replacements.length,
     systemNamesChangedCount,
     referenceNamesChangedCount,
+    twoDigitRelationsCleanedCount,
   };
 }
 
@@ -1369,6 +1427,17 @@ function createEntityArgumentReplacement(entity, argumentIndex, value) {
   const rawArgs = entity.rawArgs.slice();
   while (rawArgs.length <= argumentIndex) rawArgs.push('$');
   rawArgs[argumentIndex] = encodeStepString(value);
+  return {
+    start: entity.start,
+    end: entity.end,
+    value: `#${entity.id}=${entity.type}(${rawArgs.join(',')});`,
+  };
+}
+
+function createEntityRawArgumentReplacement(entity, argumentIndex, rawValue) {
+  const rawArgs = entity.rawArgs.slice();
+  while (rawArgs.length <= argumentIndex) rawArgs.push('$');
+  rawArgs[argumentIndex] = rawValue;
   return {
     start: entity.start,
     end: entity.end,
@@ -1385,9 +1454,8 @@ function resolvePrimaryClassificationDescription(code, lookup) {
 }
 
 function formatTwoDigitReferenceName(code, description) {
-  const cleanCode = String(code || '').trim();
-  const cleanDescription = String(description || UNKNOWN_NLSFB_DESCRIPTION).trim() || UNKNOWN_NLSFB_DESCRIPTION;
-  return cleanCode ? `${cleanCode} | ${cleanDescription}` : cleanDescription;
+  const cleanDescription = String(description || TWO_DIGIT_UNRESOLVED_NLSFB_DESCRIPTION).trim();
+  return cleanDescription || TWO_DIGIT_UNRESOLVED_NLSFB_DESCRIPTION;
 }
 
 function isTwoDigitClassificationName(name) {
