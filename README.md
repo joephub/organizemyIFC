@@ -85,44 +85,65 @@ In de geavanceerde instellingen staat de optie `Voeg bouwvolgorde toe`. Deze opt
 
 Wanneer de optie aan staat, krijgen geometrische IFC objecten twee extra eigenschappen in het gekozen eigenschappen tabje:
 
-- `Bouwvolgorde code`
-- `Bouwvolgorde omschrijving`
+1. `Bouwvolgorde code`
+2. `Bouwvolgorde omschrijving`
 
-Daarnaast wordt dezelfde informatie als IFC classificatie toegevoegd. De naam van deze classificatie is exact `Bouwvolgorde`.
+Dezelfde informatie wordt als IFC classificatie toegevoegd met de naam `Bouwvolgorde`.
 
-De code wordt opgebouwd volgens het standaardformaat `fase.Z hoogte.stap`. De Z hoogte van de gekoppelde `IfcBuildingStorey` wordt naar millimeters omgerekend, afgerond en als vast bouwlaagdeel gebruikt. De naam van de bouwlaag speelt daarbij geen rol.
+De code gebruikt standaard het formaat `fase.Z hoogte.stap`. De Z hoogte van de gekoppelde `IfcBuildingStorey` wordt naar millimeters omgerekend en afgerond. De bouwlaagnaam heeft geen invloed op de code.
 
-Voorbeelden bij een constructiestap met fase `02` en stap `10`:
+Voor een bouwlaag op 3800 millimeter ontstaat standaard deze volgorde:
 
 ```text
-Z = 3000 mm  -> 02.003000.10
-Z = 6000 mm  -> 02.006000.10
+02.003800.00  Constructieve verdiepingsvloer
+02.003800.10  Dragende wanden, kolommen en kernen
+02.003800.20  Trappen en hellingbanen
+04.003800.00  Niet constructieve vloer
+04.003800.10  Niet dragende buitenwanden / Buitenspouwbladen
+05.003800.10  Niet dragende binnenwanden
+08.003800.10  Buitenwandafwerkingen
+08.003800.20  Binnenwandafwerkingen
+08.003800.30  Vloerafwerkingen
 ```
 
-Een model in meters en een model in millimeters leveren daardoor dezelfde bouwlaagcode op. Bouwlagen met dezelfde afgeronde Z hoogte krijgen dezelfde code, ook wanneer hun namen verschillen. Hogere Z waarden leveren oplopende bouwlaagcodes op.
+De specifieke NL-SfB code is leidend. Daardoor wordt `23.2*` als constructieve vloer behandeld en krijgt deze een lager stapnummer dan dragende wanden op hetzelfde Z niveau. `23.1*` wordt als niet constructieve vloer behandeld. De groepen `21.1*`, `22.1*`, `21.2*` en `22.2*` worden eveneens afzonderlijk verwerkt.
 
-De omschrijving bevat standaard alleen de omschrijving van de stap uit `bouwvolgorde_nlsfb.json`, bijvoorbeeld `Dragende wanden, kolommen en kernen`. Een bouwlaagnaam wordt niet meer aan de omschrijving toegevoegd.
+Bij een algemene code zoals `23`, `21` of `22` gebruikt de tool de aanwezige IFC eigenschap `LoadBearing` wanneer deze beschikbaar is. Wanneer zowel de code als de eigenschap de constructiviteit niet aangeven, gebruikt de tool een neutrale regel met een eigen vaste code.
+
+De afwerkingsgroepen `41`, `42`, `43`, `44`, `45`, `47` en `48` staan in een afzonderlijke latere fase. Zij worden daardoor niet meer gemengd met de constructieve vloer, niet constructieve vloer of wanden.
+
+Classificatiereferenties voor de bouwvolgorde worden in oplopende fase, Z hoogte en stap aangemaakt. Hierdoor tonen viewers die de IFC volgorde volgen de classificatiereferenties eveneens in een logische volgorde.
 
 In `bouwvolgorde_nlsfb.json` zijn onder meer deze instellingen aanpasbaar:
 
-- `code_formaat`
-- `omschrijving_formaat`
-- `bouwlaag_afronding_mm`
-- `bouwlaag_z_breedte`
-- `bouwlaag_onbekend_code`
-- `fase_id`
-- `volgorde_nummer`
-- `nlsfb_codes`
-- `bouwlaag_selectie`
-- `omschrijving`
+1. `code_formaat`
+2. `omschrijving_formaat`
+3. `bouwlaag_afronding_mm`
+4. `bouwlaag_z_breedte`
+5. `bouwlaag_onbekend_code`
+6. `fase_id`
+7. `volgorde_nummer`
+8. `nlsfb_codes`
+9. `bouwlaag_selectie`
+10. `omschrijving`
+11. `dragend`
 
-De standaard afronding is één millimeter. Door `bouwlaag_afronding_mm` bijvoorbeeld op `10` of `100` te zetten, kunnen kleine hoogteverschillen tussen discipline modellen verder worden geneutraliseerd. De bestandsnaam moet `bouwvolgorde_nlsfb.json` blijven.
+De standaard afronding is één millimeter. Door `bouwlaag_afronding_mm` bijvoorbeeld op `10` of `100` te zetten, kunnen kleine hoogteverschillen tussen discipline modellen worden geneutraliseerd. De bestandsnaam moet `bouwvolgorde_nlsfb.json` blijven.
 
 Wanneer geen bruikbare bouwlaaghoogte aanwezig is, wordt standaard `XXXXXX` als bouwlaagdeel gebruikt.
 
 Objecten zonder herkenbare NL-SfB code en objecten met een code die niet in `nlsfb2021.json` bestaat, krijgen in de bouwvolgorde:
 
-- code `XX`
-- omschrijving `Geen bouwvolgorde omdat NL-SfB code ontbreekt`
+```text
+Code: XX
+Omschrijving: Geen bouwvolgorde omdat NL-SfB code ontbreekt
+```
 
-Een geldige NL-SfB code waarvoor geen regel in `bouwvolgorde_nlsfb.json` staat, krijgt standaard code `NM` met de omschrijving `Geen bouwvolgorde ingesteld voor deze NL-SfB code`. Ook deze waarden zijn in de JSON aanpasbaar.
+Een geldige NL-SfB code waarvoor geen regel in `bouwvolgorde_nlsfb.json` staat, krijgt standaard:
+
+```text
+Code: NM
+Omschrijving: Geen bouwvolgorde ingesteld voor deze NL-SfB code
+```
+
+Ook deze waarden zijn in de JSON aanpasbaar.

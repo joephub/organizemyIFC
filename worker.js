@@ -359,6 +359,7 @@ function processIfc(text, config, nlsfbEntries, constructionSequenceConfig) {
         constructionSequenceAssignments.set(constructionAssignment.code, {
           code: constructionAssignment.code,
           name: constructionAssignment.description,
+          sortKey: constructionAssignment.sortKey || null,
           elementIds: [],
         });
       }
@@ -575,7 +576,10 @@ function processIfc(text, config, nlsfbEntries, constructionSequenceConfig) {
 
     const existingRefs = findClassificationReferencesForSource(classificationId, entityList, entities);
 
-    for (const assignment of constructionSequenceAssignments.values()) {
+    const orderedConstructionSequenceAssignments = Array.from(constructionSequenceAssignments.values())
+      .sort(compareConstructionSequenceAssignments);
+
+    for (const assignment of orderedConstructionSequenceAssignments) {
       let referenceId = existingRefs.get(assignment.code) || null;
       if (!referenceId) {
         referenceId = addClassificationReferenceEntity(
@@ -2129,12 +2133,15 @@ function resolveConstructionSequenceAssignment({
       kind: 'missing',
       code: settings.missingCode,
       description: settings.missingDescription,
+      sortKey: [Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY, 1],
     };
   }
 
   const loadBearingValue = parseBooleanLike(getMapValue(commonProperties, normalizeKey('LoadBearing')));
   const inferredLoadBearing = inferLoadBearingFromNlsfbCode(canonicalSourceCode);
-  const effectiveLoadBearing = loadBearingValue == null ? inferredLoadBearing : loadBearingValue;
+  // Een specifieke NL-SfB code zoals 23.2 of 21.1 is leidend. Alleen bij een
+  // algemene code wordt LoadBearing gebruikt om de constructiviteit te bepalen.
+  const effectiveLoadBearing = inferredLoadBearing == null ? loadBearingValue : inferredLoadBearing;
   const rule = findConstructionSequenceRule(
     canonicalSourceCode,
     effectiveLoadBearing,
@@ -2150,6 +2157,7 @@ function resolveConstructionSequenceAssignment({
       description: applyConstructionTemplate(settings.unmappedDescription, {
         nlsfb_code: canonicalSourceCode || sourceCode || '',
       }),
+      sortKey: [Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY, 0],
     };
   }
 
@@ -2182,7 +2190,27 @@ function resolveConstructionSequenceAssignment({
     code,
     description,
     rule,
+    sortKey: [
+      rule.phaseId,
+      roundedElevationMm == null ? Number.POSITIVE_INFINITY : roundedElevationMm,
+      rule.stepNumber,
+      0,
+    ],
   };
+}
+
+function compareConstructionSequenceAssignments(a, b) {
+  const left = Array.isArray(a?.sortKey) ? a.sortKey : [];
+  const right = Array.isArray(b?.sortKey) ? b.sortKey : [];
+  const length = Math.max(left.length, right.length, 4);
+  for (let index = 0; index < length; index += 1) {
+    const leftValue = Number(left[index]);
+    const rightValue = Number(right[index]);
+    const safeLeft = Number.isFinite(leftValue) ? leftValue : Number.POSITIVE_INFINITY;
+    const safeRight = Number.isFinite(rightValue) ? rightValue : Number.POSITIVE_INFINITY;
+    if (safeLeft !== safeRight) return safeLeft - safeRight;
+  }
+  return String(a?.code || '').localeCompare(String(b?.code || ''), 'nl', { numeric: true });
 }
 
 function findConstructionSequenceRule(canonicalCode, loadBearing, storeyInfo, storeySequence, rules) {
@@ -2199,7 +2227,7 @@ function findConstructionSequenceRule(canonicalCode, loadBearing, storeyInfo, st
     if (!codeScore) continue;
 
     let conditionScore = 0;
-    if (rule.loadBearing != null && (twoDigitCode === '21' || twoDigitCode === '22')) {
+    if (rule.loadBearing != null && supportsConstructionLoadBearing(twoDigitCode)) {
       if (loadBearing != null && loadBearing !== rule.loadBearing) continue;
       conditionScore = loadBearing == null ? -25 : 100;
     }
@@ -2235,10 +2263,14 @@ function constructionFloorMatches(selection, storeyInfo, storeySequence) {
   return true;
 }
 
+function supportsConstructionLoadBearing(twoDigitCode) {
+  return ['13', '21', '22', '23', '27'].includes(String(twoDigitCode || ''));
+}
+
 function inferLoadBearingFromNlsfbCode(code) {
   const normalized = String(code || '').replace(',', '.');
-  if (/^(21|22)\.1/.test(normalized)) return false;
-  if (/^(21|22)\.2/.test(normalized)) return true;
+  if (/^(13|21|22|23|27)\.1/.test(normalized)) return false;
+  if (/^(13|21|22|23|27)\.2/.test(normalized)) return true;
   return null;
 }
 
