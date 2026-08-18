@@ -203,7 +203,7 @@
             <button class="button button-quiet back-button" id="backButton" type="button">← Terug</button>
             <span class="eyebrow">Geavanceerde instellingen</span>
             <h1>Pas de bundeling aan</h1>
-            <p>Stel namen, eigenschappen en herkenbare classificatienamen in.</p>
+            <p>Stel namen, eigenschappen, classificaties en bouwvolgorde in.</p>
           </div>
         </div>
 
@@ -243,6 +243,19 @@
               </button>
             </div>
             <div class="classification-alias-list" id="classificationAliasList"></div>
+          </section>
+
+          <section class="card settings-card build-sequence-settings">
+            <div class="section-heading section-heading-compact">
+              <div>
+                <h2>Bouwvolgorde</h2>
+              </div>
+            </div>
+            <label class="toggle-setting" for="addConstructionSequenceInput">
+              <span class="toggle-setting-label">Voeg bouwvolgorde toe</span>
+              <input class="toggle-checkbox" id="addConstructionSequenceInput" type="checkbox">
+              <span class="toggle-control" aria-hidden="true"><span></span></span>
+            </label>
           </section>
 
           <div class="notice notice-error" id="settingsError" role="alert" hidden></div>

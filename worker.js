@@ -9,20 +9,27 @@ const UNKNOWN_NLSFB_DESCRIPTION = 'Onbekende NL-SfB codering';
 const MISSING_NLSFB_CODE = 'XX';
 const MISSING_NLSFB_DESCRIPTION = 'Geen NL-SfB codering';
 const TWO_DIGIT_UNRESOLVED_NLSFB_DESCRIPTION = 'Geen of onbekende NL-SfB codering';
+const CONSTRUCTION_SEQUENCE_CLASSIFICATION_NAME = 'Bouwvolgorde';
+const DEFAULT_CONSTRUCTION_SEQUENCE_CODE_PROPERTY = 'Bouwvolgorde code';
+const DEFAULT_CONSTRUCTION_SEQUENCE_DESCRIPTION_PROPERTY = 'Bouwvolgorde omschrijving';
+const DEFAULT_CONSTRUCTION_SEQUENCE_MISSING_CODE = 'XX';
+const DEFAULT_CONSTRUCTION_SEQUENCE_MISSING_DESCRIPTION = 'Geen bouwvolgorde omdat NL-SfB code ontbreekt';
+const DEFAULT_CONSTRUCTION_SEQUENCE_UNMAPPED_CODE = 'NM';
+const DEFAULT_CONSTRUCTION_SEQUENCE_UNMAPPED_DESCRIPTION = 'Geen bouwvolgorde ingesteld voor deze NL-SfB code';
 
 self.onmessage = async (event) => {
   const message = event.data || {};
   if (message.type !== 'process') return;
 
   try {
-    const { file, config, nlsfbEntries } = message;
+    const { file, config, nlsfbEntries, constructionSequenceConfig } = message;
     if (!file) throw new Error('Geen IFC bestand ontvangen.');
 
     postProgress(2, 'IFC bestand lezen');
     const text = await file.text();
 
     postProgress(8, 'IFC structuur analyseren');
-    const result = processIfc(text, config || {}, nlsfbEntries || []);
+    const result = processIfc(text, config || {}, nlsfbEntries || [], constructionSequenceConfig || null);
 
     postProgress(96, 'Exportbestand opbouwen');
     const blob = new Blob([result.output], { type: 'application/x-step' });
@@ -47,7 +54,7 @@ function postProgress(percent, message) {
   self.postMessage({ type: 'progress', percent, message });
 }
 
-function processIfc(text, config, nlsfbEntries) {
+function processIfc(text, config, nlsfbEntries, constructionSequenceConfig) {
   if (typeof text !== 'string' || !text.trim()) {
     throw new Error('Het IFC bestand is leeg.');
   }
@@ -93,12 +100,21 @@ function processIfc(text, config, nlsfbEntries) {
   const classificationAliases = normalizeAliases(config.classificationAliases || []);
   const canonicalClassificationName = CANONICAL_CLASSIFICATION_NAME;
   const twoDigitClassificationName = TWO_DIGIT_CLASSIFICATION_NAME;
+  const constructionSequence = config.addConstructionSequence === true
+    ? normalizeConstructionSequenceConfig(constructionSequenceConfig)
+    : null;
+  const storeySequence = constructionSequence
+    ? buildStoreySequence(entityList, entities)
+    : null;
 
   const classificationSystemIdsToNormalize = new Set();
   const twoDigitClassificationSystemIds = new Set();
+  const constructionSequenceSystemIds = new Set();
   for (const [classificationId, classificationName] of index.classificationNames.entries()) {
     if (isTwoDigitClassificationName(classificationName)) {
       twoDigitClassificationSystemIds.add(classificationId);
+    } else if (normalizeSearchText(classificationName) === normalizeSearchText(CONSTRUCTION_SEQUENCE_CLASSIFICATION_NAME)) {
+      constructionSequenceSystemIds.add(classificationId);
     } else if (findAliasIndex(classificationName, classificationAliases) >= 0) {
       classificationSystemIdsToNormalize.add(classificationId);
     }
@@ -126,6 +142,12 @@ function processIfc(text, config, nlsfbEntries) {
     missingClassificationRelationsCreated: 0,
     missingClassificationsAssigned: 0,
     classificationDescriptionsNormalized: 0,
+    constructionSequenceAssignments: 0,
+    constructionSequenceReferencesCreated: 0,
+    constructionSequenceRelationsCreated: 0,
+    constructionSequenceRelationsCleaned: 0,
+    constructionSequenceUnmapped: 0,
+    constructionSequenceWithoutStorey: 0,
     elementsWithoutStorey: 0,
     warningsShown: 0,
     warningCount: 0,
@@ -141,6 +163,9 @@ function processIfc(text, config, nlsfbEntries) {
       classificationAliases,
       canonicalClassificationName,
       twoDigitClassificationName,
+      addConstructionSequence: Boolean(constructionSequence),
+      constructionSequenceClassificationName: constructionSequence ? CONSTRUCTION_SEQUENCE_CLASSIFICATION_NAME : null,
+      constructionSequenceVersion: constructionSequence ? constructionSequence.metadata.version : null,
     },
     unresolvedClassificationCodes: [],
     duplicateClassificationCandidates: [],
@@ -152,6 +177,9 @@ function processIfc(text, config, nlsfbEntries) {
   const elementRecords = [];
   const twoDigitAssignments = new Map();
   const desiredTwoDigitCodeByElement = new Map();
+  const constructionSequenceAssignments = new Map();
+  const desiredConstructionSequenceCodeByElement = new Map();
+  const constructionSequenceDescriptionsByCode = new Map();
   const missingClassificationElementIds = [];
 
   postProgress(30, 'Elementinformatie verzamelen');
@@ -170,7 +198,11 @@ function processIfc(text, config, nlsfbEntries) {
 
     const typeId = index.typeByObject.get(expressId) || null;
     const typeEntity = typeId ? entities.get(typeId) : null;
-    const storeyId = findStoreyForObject(expressId, index, entities);
+    let storeyId = findStoreyForObject(expressId, index, entities);
+    if (!storeyId && storeySequence) {
+      storeyId = findStoreyByObjectPlacement(entity, storeySequence, entities);
+    }
+    const storeyInfo = storeyId && storeySequence ? storeySequence.byId.get(storeyId) || null : null;
     const storeyName = storeyId ? getStringArg(entities.get(storeyId), 2) : null;
     if (!storeyId) summary.elementsWithoutStorey += 1;
 
@@ -197,6 +229,8 @@ function processIfc(text, config, nlsfbEntries) {
     let twoDigitCode = null;
     let twoDigitDescription = null;
     let twoDigitUri = null;
+    let canonicalSourceCode = null;
+    let sourceCodeIsValid = false;
 
     if (classificationResult.match) {
       summary.sourceClassificationsFound += 1;
@@ -223,13 +257,14 @@ function processIfc(text, config, nlsfbEntries) {
       }
 
       const rawSourceCode = String(sourceCode || '').trim();
-      const canonicalSourceCode = canonicalizeClassificationCode(sourceCode, nlsfb.byCode);
+      canonicalSourceCode = canonicalizeClassificationCode(sourceCode, nlsfb.byCode);
       const officialSource = canonicalSourceCode ? nlsfb.byCode.get(canonicalSourceCode) : null;
       if (rawSourceCode.toUpperCase() === MISSING_NLSFB_CODE) {
         sourceDescription = MISSING_NLSFB_DESCRIPTION;
         twoDigitCode = MISSING_NLSFB_CODE;
         twoDigitDescription = TWO_DIGIT_UNRESOLVED_NLSFB_DESCRIPTION;
       } else if (officialSource) {
+        sourceCodeIsValid = true;
         sourceDescription = officialSource.name;
 
         const derivedCode = deriveTwoDigitCode(sourceCode);
@@ -291,6 +326,34 @@ function processIfc(text, config, nlsfbEntries) {
       twoDigitAssignments.get(twoDigitCode).elementIds.push(expressId);
     }
 
+    let constructionAssignment = null;
+    if (constructionSequence && hasGeometry) {
+      constructionAssignment = resolveConstructionSequenceAssignment({
+        sourceCode,
+        canonicalSourceCode,
+        sourceCodeIsValid,
+        storeyInfo,
+        storeySequence,
+        commonProperties,
+        constructionSequence,
+      });
+
+      summary.constructionSequenceAssignments += 1;
+      if (constructionAssignment.kind !== 'mapped') summary.constructionSequenceUnmapped += 1;
+      if (!storeyInfo) summary.constructionSequenceWithoutStorey += 1;
+
+      desiredConstructionSequenceCodeByElement.set(expressId, constructionAssignment.code);
+      constructionSequenceDescriptionsByCode.set(constructionAssignment.code, constructionAssignment.description);
+      if (!constructionSequenceAssignments.has(constructionAssignment.code)) {
+        constructionSequenceAssignments.set(constructionAssignment.code, {
+          code: constructionAssignment.code,
+          name: constructionAssignment.description,
+          elementIds: [],
+        });
+      }
+      constructionSequenceAssignments.get(constructionAssignment.code).elementIds.push(expressId);
+    }
+
     const targetAlreadyExists = hasDirectPsetNamed(expressId, targetPsetName, index, entities);
     if (targetAlreadyExists) {
       summary.skippedExistingTargetPset += 1;
@@ -316,6 +379,19 @@ function processIfc(text, config, nlsfbEntries) {
 
     propertyCandidates.push({ name: 'NL-SfB code', type: 'identifier', value: sourceCode });
     propertyCandidates.push({ name: 'NL-SfB omschrijving', type: 'label', value: sourceDescription });
+
+    if (constructionAssignment) {
+      propertyCandidates.push({
+        name: constructionSequence.settings.codePropertyName,
+        type: 'identifier',
+        value: constructionAssignment.code,
+      });
+      propertyCandidates.push({
+        name: constructionSequence.settings.descriptionPropertyName,
+        type: 'label',
+        value: constructionAssignment.description,
+      });
+    }
 
     const properties = buildTargetProperties(propertyCandidates, addWarning, expressId);
     if (!properties.length) {
@@ -468,6 +544,53 @@ function processIfc(text, config, nlsfbEntries) {
     }
   }
 
+
+  if (constructionSequence && constructionSequenceAssignments.size > 0) {
+    postProgress(89, 'Bouwvolgorde toevoegen');
+    let classificationId = findClassificationByNames(
+      [CONSTRUCTION_SEQUENCE_CLASSIFICATION_NAME],
+      entityList,
+    );
+
+    if (!classificationId) {
+      classificationId = addConstructionSequenceClassificationEntity(
+        addEntity,
+        schema.key,
+        constructionSequence.metadata.version,
+      );
+    } else {
+      constructionSequenceSystemIds.add(classificationId);
+    }
+
+    const existingRefs = findClassificationReferencesForSource(classificationId, entityList, entities);
+
+    for (const assignment of constructionSequenceAssignments.values()) {
+      let referenceId = existingRefs.get(assignment.code) || null;
+      if (!referenceId) {
+        referenceId = addClassificationReferenceEntity(
+          addEntity,
+          schema.key,
+          classificationId,
+          assignment.code,
+          assignment.name,
+          null,
+        );
+        summary.constructionSequenceReferencesCreated += 1;
+      }
+
+      const uniqueIds = Array.from(new Set(assignment.elementIds))
+        .filter((objectId) => !hasDirectClassificationReference(objectId, referenceId, index));
+      for (let start = 0; start < uniqueIds.length; start += CLASSIFICATION_BATCH_SIZE) {
+        const batch = uniqueIds.slice(start, start + CLASSIFICATION_BATCH_SIZE);
+        addEntity(
+          'IFCRELASSOCIATESCLASSIFICATION',
+          `${encodeStepString(createIfcGuid())},${ownerHistoryRef},$,$,(${batch.map((id) => `#${id}`).join(',')}),#${referenceId}`,
+        );
+        summary.constructionSequenceRelationsCreated += 1;
+      }
+    }
+  }
+
   const rewritten = rewriteClassificationMetadata(
     dataText,
     entities,
@@ -475,13 +598,18 @@ function processIfc(text, config, nlsfbEntries) {
     classificationSystemIdsToNormalize,
     twoDigitClassificationSystemIds,
     desiredTwoDigitCodeByElement,
+    constructionSequenceSystemIds,
+    desiredConstructionSequenceCodeByElement,
+    constructionSequenceDescriptionsByCode,
     nlsfb,
     canonicalClassificationName,
     twoDigitClassificationName,
+    CONSTRUCTION_SEQUENCE_CLASSIFICATION_NAME,
   );
   summary.classificationSystemsNormalized = rewritten.systemNamesChangedCount;
   summary.classificationDescriptionsNormalized = rewritten.referenceNamesChangedCount;
   summary.twoDigitClassificationRelationsCleaned = rewritten.twoDigitRelationsCleanedCount;
+  summary.constructionSequenceRelationsCleaned = rewritten.constructionSequenceRelationsCleanedCount;
 
   if (!newLines.length && rewritten.changedCount === 0) {
     throw new Error('Er is geen nieuwe informatie gevonden om te structureren.');
@@ -1094,6 +1222,146 @@ function climbToStorey(startId, index, entities, externalVisited) {
   return null;
 }
 
+
+function buildStoreySequence(entityList, entities) {
+  const storeys = entityList
+    .filter((entity) => entity.type === 'IFCBUILDINGSTOREY')
+    .map((entity) => ({
+      id: entity.id,
+      name: getStringArg(entity, 2) || `Bouwlaag ${entity.id}`,
+      elevation: getStoreyElevation(entity, entities),
+      rank: null,
+    }));
+
+  const withElevation = storeys
+    .filter((storey) => Number.isFinite(storey.elevation))
+    .sort((a, b) => a.elevation - b.elevation || a.id - b.id);
+  const withoutElevation = storeys
+    .filter((storey) => !Number.isFinite(storey.elevation))
+    .sort((a, b) => normalizeSearchText(a.name).localeCompare(normalizeSearchText(b.name), 'nl') || a.id - b.id);
+
+  let rank = 0;
+  let previousElevation = null;
+  const elevationTolerance = 1e-7;
+  for (const storey of withElevation) {
+    if (previousElevation == null || Math.abs(storey.elevation - previousElevation) > elevationTolerance) {
+      rank += 1;
+      previousElevation = storey.elevation;
+    }
+    storey.rank = rank;
+  }
+
+  let previousName = null;
+  for (const storey of withoutElevation) {
+    const normalizedName = normalizeSearchText(storey.name);
+    if (!normalizedName || normalizedName !== previousName) {
+      rank += 1;
+      previousName = normalizedName;
+    }
+    storey.rank = rank;
+  }
+
+  const ordered = [...withElevation, ...withoutElevation];
+  return {
+    byId: new Map(ordered.map((storey) => [storey.id, storey])),
+    ordered,
+    maxRank: rank,
+  };
+}
+
+function getStoreyElevation(storey, entities) {
+  if (!storey) return null;
+  const directElevation = numericNodeValue(storey.args[9]);
+  if (Number.isFinite(directElevation)) return directElevation;
+  const placementId = getSingleRef(storey.args[5]);
+  return placementId ? resolvePlacementZ(placementId, entities, new Set()) : null;
+}
+
+function findStoreyByObjectPlacement(entity, storeySequence, entities) {
+  if (!entity || !storeySequence || !storeySequence.ordered.length) return null;
+  const placementId = getSingleRef(entity.args[5]);
+  const objectZ = placementId ? resolvePlacementZ(placementId, entities, new Set()) : null;
+  if (!Number.isFinite(objectZ)) return null;
+
+  const elevatedStoreys = storeySequence.ordered.filter((storey) => Number.isFinite(storey.elevation));
+  if (!elevatedStoreys.length) return null;
+
+  let nearest = elevatedStoreys[0];
+  let nearestDistance = Math.abs(objectZ - nearest.elevation);
+  let below = null;
+
+  for (const storey of elevatedStoreys) {
+    const distance = Math.abs(objectZ - storey.elevation);
+    if (distance < nearestDistance) {
+      nearest = storey;
+      nearestDistance = distance;
+    }
+    if (storey.elevation <= objectZ + 1e-7) below = storey;
+  }
+
+  return (below || nearest).id;
+}
+
+function resolvePlacementZ(placementId, entities, visited) {
+  if (!placementId || visited.has(placementId)) return null;
+  visited.add(placementId);
+  const placement = entities.get(placementId);
+  if (!placement) return null;
+
+  if (placement.type === 'IFCLOCALPLACEMENT') {
+    const parentId = getSingleRef(placement.args[0]);
+    const relativeId = getSingleRef(placement.args[1]);
+    const parentZ = parentId ? resolvePlacementZ(parentId, entities, visited) : 0;
+    const relativeZ = relativeId ? resolveAxisPlacementZ(relativeId, entities, visited) : 0;
+    const safeParent = Number.isFinite(parentZ) ? parentZ : 0;
+    const safeRelative = Number.isFinite(relativeZ) ? relativeZ : 0;
+    return safeParent + safeRelative;
+  }
+
+  if (placement.type === 'IFCAXIS2PLACEMENT3D' || placement.type === 'IFCAXIS2PLACEMENT2D') {
+    return resolveAxisPlacementZ(placement.id, entities, visited);
+  }
+
+  if (placement.type === 'IFCCARTESIANPOINT') {
+    return getCartesianPointZ(placement);
+  }
+
+  return null;
+}
+
+function resolveAxisPlacementZ(axisPlacementId, entities, visited) {
+  if (!axisPlacementId || visited.has(`axis:${axisPlacementId}`)) return null;
+  visited.add(`axis:${axisPlacementId}`);
+  const axisPlacement = entities.get(axisPlacementId);
+  if (!axisPlacement) return null;
+  if (axisPlacement.type === 'IFCCARTESIANPOINT') return getCartesianPointZ(axisPlacement);
+  const locationId = getSingleRef(axisPlacement.args[0]);
+  const location = locationId ? entities.get(locationId) : null;
+  return location?.type === 'IFCCARTESIANPOINT' ? getCartesianPointZ(location) : null;
+}
+
+function getCartesianPointZ(point) {
+  if (!point || point.type !== 'IFCCARTESIANPOINT') return null;
+  const coordinates = getListItems(point.args[0]);
+  if (!coordinates.length) return null;
+  if (coordinates.length < 3) return 0;
+  return numericNodeValue(coordinates[2]);
+}
+
+function numericNodeValue(node) {
+  if (!node) return null;
+  if (node.kind === 'typed') return numericNodeValue(node.value);
+  if (node.kind === 'number') {
+    const value = Number(node.value);
+    return Number.isFinite(value) ? value : null;
+  }
+  if (node.kind === 'raw' || node.kind === 'string') {
+    const value = Number(String(node.value || '').replace(',', '.'));
+    return Number.isFinite(value) ? value : null;
+  }
+  return null;
+}
+
 function collectCommonProperties(objectId, typeId, index, entities, psetRegex, config) {
   const result = new Map();
   const sourceIds = [];
@@ -1328,14 +1596,19 @@ function rewriteClassificationMetadata(
   primaryClassificationIds,
   twoDigitClassificationIds,
   desiredTwoDigitCodeByElement,
+  constructionSequenceClassificationIds,
+  desiredConstructionSequenceCodeByElement,
+  constructionSequenceDescriptionsByCode,
   nlsfb,
   canonicalName,
   twoDigitName,
+  constructionSequenceName,
 ) {
   const replacements = [];
   let systemNamesChangedCount = 0;
   let referenceNamesChangedCount = 0;
   let twoDigitRelationsCleanedCount = 0;
+  let constructionSequenceRelationsCleanedCount = 0;
 
   for (const entity of entities.values()) {
     if (!Number.isInteger(entity.start) || !Number.isInteger(entity.end)) continue;
@@ -1344,6 +1617,7 @@ function rewriteClassificationMetadata(
       let desiredName = null;
       if (primaryClassificationIds.has(entity.id)) desiredName = canonicalName;
       else if (twoDigitClassificationIds.has(entity.id)) desiredName = twoDigitName;
+      else if (constructionSequenceClassificationIds.has(entity.id)) desiredName = constructionSequenceName;
       if (!desiredName || getStringArg(entity, 3) === desiredName) continue;
 
       replacements.push(createEntityArgumentReplacement(entity, 3, desiredName));
@@ -1357,15 +1631,28 @@ function rewriteClassificationMetadata(
       if (!reference) continue;
 
       const source = resolveClassificationSource(reference.sourceId, index, new Set());
-      if (!source.id || !twoDigitClassificationIds.has(source.id)) continue;
+      if (!source.id) continue;
 
-      const rawReferenceCode = String(reference.code || '').trim();
-      const referenceCode = rawReferenceCode.toUpperCase() === MISSING_NLSFB_CODE
-        ? MISSING_NLSFB_CODE
-        : deriveTwoDigitCode(rawReferenceCode) || rawReferenceCode;
+      let desiredCodes = null;
+      let referenceCode = String(reference.code || '').trim();
+      let relationType = null;
+
+      if (twoDigitClassificationIds.has(source.id)) {
+        referenceCode = referenceCode.toUpperCase() === MISSING_NLSFB_CODE
+          ? MISSING_NLSFB_CODE
+          : deriveTwoDigitCode(referenceCode) || referenceCode;
+        desiredCodes = desiredTwoDigitCodeByElement;
+        relationType = 'twoDigit';
+      } else if (constructionSequenceClassificationIds.has(source.id)) {
+        desiredCodes = desiredConstructionSequenceCodeByElement;
+        relationType = 'constructionSequence';
+      } else {
+        continue;
+      }
+
       const relatedObjectIds = getRefIds(entity.args[4]);
       const retainedObjectIds = relatedObjectIds.filter((objectId) => {
-        const desiredCode = desiredTwoDigitCodeByElement.get(objectId);
+        const desiredCode = desiredCodes.get(objectId);
         return !desiredCode || desiredCode === referenceCode;
       });
 
@@ -1380,7 +1667,10 @@ function rewriteClassificationMetadata(
       } else {
         replacements.push({ start: entity.start, end: entity.end, value: '' });
       }
-      twoDigitRelationsCleanedCount += relatedObjectIds.length - retainedObjectIds.length;
+
+      const removedCount = relatedObjectIds.length - retainedObjectIds.length;
+      if (relationType === 'twoDigit') twoDigitRelationsCleanedCount += removedCount;
+      else constructionSequenceRelationsCleanedCount += removedCount;
       continue;
     }
 
@@ -1401,6 +1691,9 @@ function rewriteClassificationMetadata(
         ? TWO_DIGIT_UNRESOLVED_NLSFB_DESCRIPTION
         : official ? official.name : TWO_DIGIT_UNRESOLVED_NLSFB_DESCRIPTION;
       desiredName = formatTwoDigitReferenceName(twoDigitCode, description);
+    } else if (constructionSequenceClassificationIds.has(sourceId)) {
+      const code = String(reference.code || '').trim();
+      desiredName = constructionSequenceDescriptionsByCode.get(code) || null;
     }
 
     if (!desiredName || getStringArg(entity, 2) === desiredName) continue;
@@ -1420,6 +1713,7 @@ function rewriteClassificationMetadata(
     systemNamesChangedCount,
     referenceNamesChangedCount,
     twoDigitRelationsCleanedCount,
+    constructionSequenceRelationsCleanedCount,
   };
 }
 
@@ -1468,6 +1762,277 @@ function isTwoDigitClassificationName(name) {
 function deriveTwoDigitCode(code) {
   const leading = String(code || '').trim().match(/^\(?\s*(\d{2})/);
   return leading ? leading[1] : null;
+}
+
+
+function normalizeConstructionSequenceConfig(data) {
+  if (!data || !Array.isArray(data.fases) || !data.fases.length) {
+    throw new Error('bouwvolgorde_nlsfb.json bevat geen bruikbare fases.');
+  }
+
+  const rawSettings = data.instellingen && typeof data.instellingen === 'object'
+    ? data.instellingen
+    : {};
+  const settings = {
+    codePropertyName: String(rawSettings.eigenschap_code || DEFAULT_CONSTRUCTION_SEQUENCE_CODE_PROPERTY).trim()
+      || DEFAULT_CONSTRUCTION_SEQUENCE_CODE_PROPERTY,
+    descriptionPropertyName: String(rawSettings.eigenschap_omschrijving || DEFAULT_CONSTRUCTION_SEQUENCE_DESCRIPTION_PROPERTY).trim()
+      || DEFAULT_CONSTRUCTION_SEQUENCE_DESCRIPTION_PROPERTY,
+    codeFormat: String(rawSettings.code_formaat || '{fase}.{bouwlaag}.{stap}').trim()
+      || '{fase}.{bouwlaag}.{stap}',
+    descriptionFormat: String(rawSettings.omschrijving_formaat || '{bouwlaag_naam} | {omschrijving}').trim()
+      || '{bouwlaag_naam} | {omschrijving}',
+    floorStart: toPositiveInteger(rawSettings.bouwlaag_start, 10),
+    floorStep: toPositiveInteger(rawSettings.bouwlaag_stap, 10),
+    floorWidth: toPositiveInteger(rawSettings.bouwlaag_breedte, 3),
+    phaseWidth: toPositiveInteger(rawSettings.fase_breedte, 2),
+    stepWidth: toPositiveInteger(rawSettings.stap_breedte, 2),
+    missingCode: String(rawSettings.onbekend_code || DEFAULT_CONSTRUCTION_SEQUENCE_MISSING_CODE).trim()
+      || DEFAULT_CONSTRUCTION_SEQUENCE_MISSING_CODE,
+    missingDescription: String(rawSettings.onbekend_omschrijving || DEFAULT_CONSTRUCTION_SEQUENCE_MISSING_DESCRIPTION).trim()
+      || DEFAULT_CONSTRUCTION_SEQUENCE_MISSING_DESCRIPTION,
+    unmappedCode: String(rawSettings.geen_regel_code || DEFAULT_CONSTRUCTION_SEQUENCE_UNMAPPED_CODE).trim()
+      || DEFAULT_CONSTRUCTION_SEQUENCE_UNMAPPED_CODE,
+    unmappedDescription: String(rawSettings.geen_regel_omschrijving || DEFAULT_CONSTRUCTION_SEQUENCE_UNMAPPED_DESCRIPTION).trim()
+      || DEFAULT_CONSTRUCTION_SEQUENCE_UNMAPPED_DESCRIPTION,
+  };
+
+  const rules = [];
+  let order = 0;
+  for (let phaseIndex = 0; phaseIndex < data.fases.length; phaseIndex += 1) {
+    const phase = data.fases[phaseIndex] || {};
+    const phaseId = toPositiveInteger(phase.fase_id, phaseIndex + 1);
+    const phaseName = String(phase.fase_naam || `Fase ${phaseId}`).trim();
+    const steps = Array.isArray(phase.stappen) ? phase.stappen : [];
+
+    for (let stepIndex = 0; stepIndex < steps.length; stepIndex += 1) {
+      const step = steps[stepIndex] || {};
+      const codes = Array.isArray(step.nlsfb_codes)
+        ? step.nlsfb_codes.map(normalizeConstructionRuleCode).filter(Boolean)
+        : [];
+      if (!codes.length) continue;
+
+      const stepId = String(step.stap_id || `${phaseId}.${stepIndex + 1}`).trim();
+      const stepNumber = toPositiveInteger(
+        step.volgorde_nummer,
+        deriveConstructionStepNumber(stepId, stepIndex + 1),
+      );
+      const loadBearing = typeof step.dragend === 'boolean' ? step.dragend : null;
+
+      rules.push({
+        phaseId,
+        phaseName,
+        stepId,
+        stepNumber,
+        description: String(step.omschrijving || stepId).trim() || stepId,
+        codes,
+        floorSelection: normalizeFloorSelection(step.bouwlaag_selectie),
+        loadBearing,
+        order,
+      });
+      order += 1;
+    }
+  }
+
+  if (!rules.length) {
+    throw new Error('bouwvolgorde_nlsfb.json bevat geen stappen met NL-SfB codes.');
+  }
+
+  return {
+    metadata: {
+      version: String(data.project_metadata?.version || '1.0').trim() || '1.0',
+    },
+    settings,
+    rules,
+  };
+}
+
+function toPositiveInteger(value, fallback) {
+  const number = Number(value);
+  if (Number.isFinite(number) && number >= 0) return Math.round(number);
+  return fallback;
+}
+
+function deriveConstructionStepNumber(stepId, fallbackIndex) {
+  const match = String(stepId || '').match(/(?:^|\.)(\d+)$/);
+  if (!match) return fallbackIndex * 10;
+  const value = Number(match[1]);
+  return Number.isFinite(value) ? value * 10 : fallbackIndex * 10;
+}
+
+function normalizeConstructionRuleCode(value) {
+  const raw = String(value || '').trim().replace(',', '.');
+  if (!raw) return '';
+  const parenthesized = raw.match(/^\(([^)]+)\)/);
+  const source = parenthesized ? parenthesized[1] : raw;
+  const match = source.match(/\d{2}(?:\.\d{1,3})?|\d{3,5}/);
+  if (!match) return source.toUpperCase();
+  const token = match[0];
+  if (/^\d{3,5}$/.test(token)) return `${token.slice(0, 2)}.${token.slice(2)}`;
+  return token;
+}
+
+function normalizeFloorSelection(value) {
+  const normalized = normalizeSearchText(value || 'per_bouwlaag');
+  if (normalized === 'laagste') return 'lowest';
+  if (normalized === 'hoogste') return 'highest';
+  if (normalized === 'vanaf_tweede' || normalized === 'vanaf2' || normalized === 'vanafdetweede') return 'fromSecond';
+  return 'perFloor';
+}
+
+function resolveConstructionSequenceAssignment({
+  sourceCode,
+  canonicalSourceCode,
+  sourceCodeIsValid,
+  storeyInfo,
+  storeySequence,
+  commonProperties,
+  constructionSequence,
+}) {
+  const settings = constructionSequence.settings;
+  if (!sourceCodeIsValid || !canonicalSourceCode) {
+    return {
+      kind: 'missing',
+      code: settings.missingCode,
+      description: settings.missingDescription,
+    };
+  }
+
+  const loadBearingValue = parseBooleanLike(getMapValue(commonProperties, normalizeKey('LoadBearing')));
+  const inferredLoadBearing = inferLoadBearingFromNlsfbCode(canonicalSourceCode);
+  const effectiveLoadBearing = loadBearingValue == null ? inferredLoadBearing : loadBearingValue;
+  const rule = findConstructionSequenceRule(
+    canonicalSourceCode,
+    effectiveLoadBearing,
+    storeyInfo,
+    storeySequence,
+    constructionSequence.rules,
+  );
+
+  if (!rule) {
+    return {
+      kind: 'unmapped',
+      code: settings.unmappedCode,
+      description: applyConstructionTemplate(settings.unmappedDescription, {
+        nlsfb_code: canonicalSourceCode || sourceCode || '',
+      }),
+    };
+  }
+
+  const rank = Number(storeyInfo?.rank) || 0;
+  const floorNumber = rank > 0
+    ? settings.floorStart + ((rank - 1) * settings.floorStep)
+    : 0;
+  const tokens = {
+    fase: padConstructionNumber(rule.phaseId, settings.phaseWidth),
+    bouwlaag: padConstructionNumber(floorNumber, settings.floorWidth),
+    stap: padConstructionNumber(rule.stepNumber, settings.stepWidth),
+    stap_id: rule.stepId,
+    fase_naam: rule.phaseName,
+    bouwlaag_naam: storeyInfo?.name || '',
+    omschrijving: rule.description,
+    nlsfb_code: canonicalSourceCode,
+  };
+
+  const code = applyConstructionTemplate(settings.codeFormat, tokens).trim()
+    || `${tokens.fase}.${tokens.bouwlaag}.${tokens.stap}`;
+  const description = cleanConstructionDescription(
+    applyConstructionTemplate(settings.descriptionFormat, tokens),
+    rule.description,
+  );
+
+  return {
+    kind: 'mapped',
+    code,
+    description,
+    rule,
+  };
+}
+
+function findConstructionSequenceRule(canonicalCode, loadBearing, storeyInfo, storeySequence, rules) {
+  const twoDigitCode = deriveTwoDigitCode(canonicalCode);
+  let best = null;
+
+  for (const rule of rules) {
+    if (!constructionFloorMatches(rule.floorSelection, storeyInfo, storeySequence)) continue;
+
+    let codeScore = 0;
+    for (const ruleCode of rule.codes) {
+      codeScore = Math.max(codeScore, constructionCodeMatchScore(canonicalCode, twoDigitCode, ruleCode));
+    }
+    if (!codeScore) continue;
+
+    let conditionScore = 0;
+    if (rule.loadBearing != null && (twoDigitCode === '21' || twoDigitCode === '22')) {
+      if (loadBearing != null && loadBearing !== rule.loadBearing) continue;
+      conditionScore = loadBearing == null ? -25 : 100;
+    }
+
+    const floorScore = rule.floorSelection === 'perFloor' ? 0 : 20;
+    const score = codeScore + conditionScore + floorScore;
+    if (!best || score > best.score || (score === best.score && rule.order < best.rule.order)) {
+      best = { rule, score };
+    }
+  }
+
+  return best ? best.rule : null;
+}
+
+function constructionCodeMatchScore(canonicalCode, twoDigitCode, ruleCode) {
+  if (!ruleCode) return 0;
+  if (canonicalCode === ruleCode) return 1200 + ruleCode.replace(/\D/g, '').length;
+  if (ruleCode.includes('.') && canonicalCode.startsWith(ruleCode)) {
+    return 900 + ruleCode.replace(/\D/g, '').length;
+  }
+  if (twoDigitCode && ruleCode === twoDigitCode) return 500;
+  return 0;
+}
+
+function constructionFloorMatches(selection, storeyInfo, storeySequence) {
+  if (selection === 'perFloor') return true;
+  const rank = Number(storeyInfo?.rank) || 0;
+  const maxRank = Number(storeySequence?.maxRank) || 0;
+  if (!rank || !maxRank) return false;
+  if (selection === 'lowest') return rank === 1;
+  if (selection === 'highest') return rank === maxRank;
+  if (selection === 'fromSecond') return rank >= 2;
+  return true;
+}
+
+function inferLoadBearingFromNlsfbCode(code) {
+  const normalized = String(code || '').replace(',', '.');
+  if (/^(21|22)\.1/.test(normalized)) return false;
+  if (/^(21|22)\.2/.test(normalized)) return true;
+  return null;
+}
+
+function parseBooleanLike(value) {
+  if (value === true || value === false) return value;
+  const normalized = normalizeSearchText(value);
+  if (['true', 't', 'yes', 'ja', '1'].includes(normalized)) return true;
+  if (['false', 'f', 'no', 'nee', '0'].includes(normalized)) return false;
+  return null;
+}
+
+function padConstructionNumber(value, width) {
+  const number = Number(value);
+  const safe = Number.isFinite(number) ? Math.max(0, Math.round(number)) : 0;
+  return String(safe).padStart(Math.max(1, width), '0');
+}
+
+function applyConstructionTemplate(template, values) {
+  return String(template || '').replace(/\{([a-z0-9_]+)\}/gi, (match, key) => (
+    Object.prototype.hasOwnProperty.call(values, key) ? String(values[key] ?? '') : match
+  ));
+}
+
+function cleanConstructionDescription(value, fallback) {
+  const cleaned = String(value || '')
+    .replace(/^\s*[|:;/-]+\s*/, '')
+    .replace(/\s*[|:;/-]+\s*$/, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+  return cleaned || String(fallback || '').trim();
 }
 
 function normalizeAttributeConfig(attributes) {
@@ -1679,6 +2244,21 @@ function addClassificationEntity(addEntity, schemaKey, name) {
   return addEntity(
     'IFCCLASSIFICATION',
     `${encodeStepString('ketenstandaard')},${encodeStepString('2021')},$,${encodeStepString(name)},$,${encodeStepString('https://data.ketenstandaard.nl/publications/nlsfb/2021')},$`,
+  );
+}
+
+function addConstructionSequenceClassificationEntity(addEntity, schemaKey, version) {
+  const source = 'Organize my IFC';
+  const edition = String(version || '1.0').trim() || '1.0';
+  if (schemaKey === 'IFC2X3') {
+    return addEntity(
+      'IFCCLASSIFICATION',
+      `${encodeStepString(source)},${encodeStepString(edition)},$,${encodeStepString(CONSTRUCTION_SEQUENCE_CLASSIFICATION_NAME)}`,
+    );
+  }
+  return addEntity(
+    'IFCCLASSIFICATION',
+    `${encodeStepString(source)},${encodeStepString(edition)},$,${encodeStepString(CONSTRUCTION_SEQUENCE_CLASSIFICATION_NAME)},$,$,$`,
   );
 }
 

@@ -21,9 +21,10 @@ De meegeleverde bron is één op één gekopieerd. De parser accepteert ook de a
 
 - `index.html`: de pagina en de ingebouwde visualisatie
 - `styles.css`: vormgeving
-- `app.js`: bediening, instellingen en laden van NL-SfB
+- `app.js`: bediening, instellingen en laden van de JSON bestanden
 - `worker.js`: lokale verwerking en export van IFC
-- `nlsfb2021.json`: officiële namen en codes
+- `nlsfb2021.json`: officiële NL-SfB namen en codes
+- `bouwvolgorde_nlsfb.json`: vaste bouwvolgorde per NL-SfB code en bouwlaag
 
 ## Gebruik
 
@@ -78,4 +79,27 @@ Objecten met een ontbrekende NL-SfB code en objecten met een code die niet in `n
 
 - code `XX`
 - omschrijving `Geen of onbekende NL-SfB codering`
+## Bouwvolgorde
+
+In de geavanceerde instellingen staat de optie `Voeg bouwvolgorde toe`. Deze optie staat standaard uit.
+
+Wanneer de optie aan staat, krijgen geometrische IFC objecten twee extra eigenschappen in het gekozen eigenschappen tabje:
+
+- `Bouwvolgorde code`
+- `Bouwvolgorde omschrijving`
+
+Daarnaast wordt dezelfde informatie als IFC classificatie toegevoegd. De naam van deze classificatie is exact `Bouwvolgorde`.
+
+De code wordt opgebouwd uit vaste delen volgens het standaardformaat `fase.bouwlaag.stap`. De fases en stappen komen uit `bouwvolgorde_nlsfb.json`. Bouwlagen worden op Z hoogte gesorteerd. De onderste bouwlaag krijgt standaard bouwlaagnummer `010`, de volgende `020`, daarna `030` enzovoort. Bouwlagen op dezelfde hoogte krijgen hetzelfde nummer.
+
+Er wordt niet per object doorgeteld. Iedere NL-SfB stap heeft een vast nummer in de JSON. Daardoor krijgen overeenkomstige objecten in afzonderlijke CON, BWK en INS modellen dezelfde fase, bouwlaag en stap wanneer de modellen dezelfde bouwlagen bevatten.
+
+Het meegeleverde bestand bevat vaste reeksen voor fundering, casco, dak, gevel, afbouw, werktuigbouwkundige installaties, elektrotechnische installaties, vaste voorzieningen, terrein en losse inventaris. De volgorde kan worden aangepast door waarden zoals `fase_id`, `volgorde_nummer`, `nlsfb_codes`, `bouwlaag_selectie` en `omschrijving` in `bouwvolgorde_nlsfb.json` te wijzigen. De bestandsnaam moet gelijk blijven.
+
+Objecten zonder herkenbare NL-SfB code en objecten met een code die niet in `nlsfb2021.json` bestaat, krijgen in de bouwvolgorde:
+
+- code `XX`
+- omschrijving `Geen bouwvolgorde omdat NL-SfB code ontbreekt`
+
+Een geldige NL-SfB code waarvoor geen regel in `bouwvolgorde_nlsfb.json` staat, krijgt standaard code `NM` met de omschrijving `Geen bouwvolgorde ingesteld voor deze NL-SfB code`. Ook deze waarden zijn in de JSON aanpasbaar.
 

@@ -1,8 +1,9 @@
 'use strict';
 
-    const STORAGE_KEY = 'organize-my-ifc-settings-v4';
-    const PREVIOUS_STORAGE_KEYS = ['organize-my-ifc-settings-v3', 'organize-my-ifc-settings-v2', 'organize-my-ifc-settings-v1'];
+    const STORAGE_KEY = 'organize-my-ifc-settings-v5';
+    const PREVIOUS_STORAGE_KEYS = ['organize-my-ifc-settings-v4', 'organize-my-ifc-settings-v3', 'organize-my-ifc-settings-v2', 'organize-my-ifc-settings-v1'];
     const NLSFB_URL = './nlsfb2021.json';
+    const CONSTRUCTION_SEQUENCE_URL = './bouwvolgorde_nlsfb.json';
     const DEFAULT_CLASSIFICATION_ALIASES = ['Uniformat', 'Uniformat Classification'];
 
     const ATTRIBUTE_DEFINITIONS = [
@@ -31,6 +32,7 @@
       attributes: ATTRIBUTE_DEFINITIONS.map((attribute) => ({ key: attribute.key, outputName: attribute.outputName })),
       commonPropertyMappings: DEFAULT_COMMON_PROPERTY_MAPPINGS.map((mapping) => ({ ...mapping })),
       classificationAliases: [...DEFAULT_CLASSIFICATION_ALIASES],
+      addConstructionSequence: false,
     };
 
     const elements = {
@@ -44,6 +46,7 @@
       addPropertyMappingButton: document.getElementById('addPropertyMappingButton'),
       classificationAliasList: document.getElementById('classificationAliasList'),
       addClassificationAliasButton: document.getElementById('addClassificationAliasButton'),
+      addConstructionSequenceInput: document.getElementById('addConstructionSequenceInput'),
       ifcFileInput: document.getElementById('ifcFileInput'),
       dropzone: document.getElementById('dropzone'),
       emptyFileState: document.getElementById('emptyFileState'),
@@ -77,6 +80,9 @@
     let outputIfcUrl = null;
     let activeNlsfbEntries = [];
     let nlsfbReady = false;
+    let activeConstructionSequenceConfig = null;
+    let constructionSequenceReady = false;
+    let constructionSequenceLoadError = null;
     let settings = loadSettings();
 
     initialize();
@@ -96,6 +102,15 @@
         console.error(error);
       }
 
+      try {
+        activeConstructionSequenceConfig = await loadConstructionSequenceConfig();
+        constructionSequenceReady = true;
+      } catch (error) {
+        constructionSequenceLoadError = error;
+        console.error(error);
+      }
+
+      updateConstructionSequenceAvailability();
       updateProcessButton();
     }
 
@@ -132,6 +147,11 @@
         const row = button.closest('[data-classification-alias-row]');
         if (row) row.remove();
         syncSettingsFromForm();
+      });
+      elements.addConstructionSequenceInput.addEventListener('change', () => {
+        syncSettingsFromForm();
+        updateConstructionSequenceAvailability();
+        updateProcessButton();
       });
 
       elements.ifcFileInput.addEventListener('change', () => {
@@ -199,6 +219,8 @@
         // Instellingen blijven voor deze sessie actief wanneer lokale opslag niet beschikbaar is.
       }
       clearSettingsError();
+      updateConstructionSequenceAvailability();
+      updateProcessButton();
     }
 
     function resetSettings() {
@@ -209,6 +231,8 @@
         for (const previousKey of PREVIOUS_STORAGE_KEYS) localStorage.removeItem(previousKey);
       } catch {}
       clearSettingsError();
+      updateConstructionSequenceAvailability();
+      updateProcessButton();
     }
 
     function loadSettings() {
@@ -277,6 +301,10 @@
         base.classificationAliases = cleanClassificationAliases(stored.classificationAliases);
       }
 
+      if (typeof stored.addConstructionSequence === 'boolean') {
+        base.addConstructionSequence = stored.addConstructionSequence;
+      }
+
       return base;
     }
 
@@ -333,6 +361,7 @@
         appendClassificationAliasRow(alias, false);
       }
 
+      elements.addConstructionSequenceInput.checked = value.addConstructionSequence === true;
     }
 
     function appendPropertyMappingRow(mapping, focusSource) {
@@ -418,11 +447,12 @@
         attributes,
         commonPropertyMappings,
         classificationAliases,
+        addConstructionSequence: elements.addConstructionSequenceInput.checked,
       };
     }
 
     function validateSettings(value) {
-      const usedNames = new Set(['nl-sfb code', 'nl-sfb omschrijving']);
+      const usedNames = new Set(['nl-sfb code', 'nl-sfb omschrijving', 'bouwvolgorde code', 'bouwvolgorde omschrijving']);
 
       for (const attribute of value.attributes) {
         if (!attribute.outputName) throw new Error('Geef iedere vaste IFC waarde een naam.');
@@ -477,7 +507,7 @@
     }
 
     function updateProcessButton() {
-      elements.processButton.disabled = !selectedFile || !elements.psetNameInput.value.trim() || !nlsfbReady || Boolean(activeWorker);
+      elements.processButton.disabled = !selectedFile || !elements.psetNameInput.value.trim() || !nlsfbReady || (settings.addConstructionSequence && !constructionSequenceReady) || Boolean(activeWorker);
     }
 
     async function processSelectedIfc() {
@@ -495,6 +525,9 @@
         elements.statusCard.hidden = false;
 
         if (!nlsfbReady) throw new Error('De NL-SfB lijst is nog niet beschikbaar.');
+        if (settings.addConstructionSequence && !constructionSequenceReady) {
+          throw new Error('De bouwvolgorde kon niet worden geladen. Controleer of bouwvolgorde_nlsfb.json naast index.html staat.');
+        }
         const worker = new Worker('./worker.js');
         activeWorker = worker;
 
@@ -535,6 +568,7 @@
             sourceFileName: selectedFile.name,
           },
           nlsfbEntries: activeNlsfbEntries,
+          constructionSequenceConfig: settings.addConstructionSequence ? activeConstructionSequenceConfig : null,
         });
       } catch (error) {
         finishWorker();
@@ -550,7 +584,7 @@
     }
 
     function setBusy(busy) {
-      elements.processButton.disabled = busy || !selectedFile || !elements.psetNameInput.value.trim() || !nlsfbReady;
+      elements.processButton.disabled = busy || !selectedFile || !elements.psetNameInput.value.trim() || !nlsfbReady || (settings.addConstructionSequence && !constructionSequenceReady);
       elements.psetNameInput.disabled = busy;
       elements.openSettingsButton.disabled = busy;
       elements.removeFileButton.disabled = busy;
@@ -582,6 +616,9 @@
       ];
       if (Number(summary.sourceClassificationsFound || 0) > 0) {
         resultParts.push(`${formatNumber(summary.sourceClassificationsFound)} NL-SfB koppelingen gevonden`);
+      }
+      if (Number(summary.constructionSequenceAssignments || 0) > 0) {
+        resultParts.push(`${formatNumber(summary.constructionSequenceAssignments)} bouwvolgordes toegevoegd`);
       }
       elements.resultSummary.textContent = resultParts.join(' · ');
       renderWarnings(report, summary);
@@ -690,6 +727,28 @@
       if (!response.ok) throw new Error(`NL-SfB bestand kon niet worden geladen (${response.status}).`);
       const text = await response.text();
       return extractNlsfbEntries(parseJsonTolerant(text));
+    }
+
+    async function loadConstructionSequenceConfig() {
+      const response = await fetch(CONSTRUCTION_SEQUENCE_URL, { cache: 'no-store' });
+      if (!response.ok) throw new Error(`Bouwvolgordebestand kon niet worden geladen (${response.status}).`);
+      const text = await response.text();
+      const data = parseJsonTolerant(text);
+      if (!data || !Array.isArray(data.fases) || !data.fases.length) {
+        throw new Error('Veld “fases” ontbreekt in bouwvolgorde_nlsfb.json.');
+      }
+      return data;
+    }
+
+    function updateConstructionSequenceAvailability() {
+      const isRequired = settings.addConstructionSequence === true;
+      if (isRequired && constructionSequenceLoadError) {
+        elements.dataError.textContent = 'De bouwvolgorde kon niet worden geladen. Controleer of bouwvolgorde_nlsfb.json naast index.html staat.';
+        elements.dataError.hidden = false;
+      } else if (nlsfbReady) {
+        elements.dataError.hidden = true;
+        elements.dataError.textContent = '';
+      }
     }
 
     function showMainError(message) {
