@@ -544,13 +544,13 @@
       const total = warningCount + unresolved.length;
       elements.warningNotice.innerHTML = `
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true"><path d="M12 3 2.8 20h18.4L12 3Z"/><path d="M12 9v5m0 3h.01"/></svg>
-        <span>De export is gemaakt, maar controleer de meldingen. Codes zonder officiële JSON match blijven zonder officiële omschrijving.</span>
+        <span>De export is gemaakt, maar controleer de meldingen. Codes zonder match in de NL-SfB JSON krijgen de omschrijving “Onbekende NL-SfB codering”.</span>
       `;
       elements.warningSummary.textContent = `${total.toLocaleString('nl-NL')} meldingen bekijken`;
 
       for (const code of unresolved.slice(0, 100)) {
         const item = document.createElement('li');
-        item.textContent = `Geen officiële NL-SfB omschrijving gevonden voor code “${code}”.`;
+        item.textContent = `Code “${code}” staat niet in de NL-SfB JSON en heeft de omschrijving “Onbekende NL-SfB codering” gekregen.`;
         elements.warningList.appendChild(item);
       }
 

@@ -2,6 +2,12 @@
 
 const MAX_WARNINGS = 250;
 const CLASSIFICATION_BATCH_SIZE = 4000;
+const CANONICAL_CLASSIFICATION_NAME = 'NL-SfB tabel 1';
+const TWO_DIGIT_CLASSIFICATION_NAME = 'NL-SfB tabel 1 (2 cijferig)';
+const LEGACY_TWO_DIGIT_CLASSIFICATION_NAMES = ['NL-SfB tabel 1 - 2 cijferig'];
+const UNKNOWN_NLSFB_DESCRIPTION = 'Onbekende NL-SfB codering';
+const MISSING_NLSFB_CODE = 'XX';
+const MISSING_NLSFB_DESCRIPTION = 'Geen NL-SfB codering';
 
 self.onmessage = async (event) => {
   const message = event.data || {};
@@ -75,7 +81,7 @@ function processIfc(text, config, nlsfbEntries) {
 
   const candidates = collectCandidateElements(index, entities, { includeOpenings: false });
   if (!candidates.length) {
-    throw new Error('Er zijn geen elementinstanties gevonden via de ruimtelijke IFC relaties.');
+    throw new Error('Er zijn geen geschikte IFC elementen gevonden.');
   }
 
   const nlsfb = buildNlsfbLookup(nlsfbEntries);
@@ -84,12 +90,15 @@ function processIfc(text, config, nlsfbEntries) {
   const commonPropertyMappings = normalizeCommonPropertyMappings(config.commonPropertyMappings, config);
   const commonPsetRegex = compileCommonPsetRegex('^Pset_.*Common$');
   const classificationAliases = normalizeAliases(config.classificationAliases || []);
-  const canonicalClassificationName = 'NL-SfB tabel 1';
-  const twoDigitClassificationName = 'NL-SfB tabel 1 - 2 cijferig';
+  const canonicalClassificationName = CANONICAL_CLASSIFICATION_NAME;
+  const twoDigitClassificationName = TWO_DIGIT_CLASSIFICATION_NAME;
 
   const classificationSystemIdsToNormalize = new Set();
+  const twoDigitClassificationSystemIds = new Set();
   for (const [classificationId, classificationName] of index.classificationNames.entries()) {
-    if (findAliasIndex(classificationName, classificationAliases) >= 0) {
+    if (isTwoDigitClassificationName(classificationName)) {
+      twoDigitClassificationSystemIds.add(classificationId);
+    } else if (findAliasIndex(classificationName, classificationAliases) >= 0) {
       classificationSystemIdsToNormalize.add(classificationId);
     }
   }
@@ -111,6 +120,10 @@ function processIfc(text, config, nlsfbEntries) {
     twoDigitCodesFound: 0,
     twoDigitClassificationReferencesCreated: 0,
     twoDigitClassificationRelationsCreated: 0,
+    missingClassificationReferencesCreated: 0,
+    missingClassificationRelationsCreated: 0,
+    missingClassificationsAssigned: 0,
+    classificationDescriptionsNormalized: 0,
     elementsWithoutStorey: 0,
     warningsShown: 0,
     warningCount: 0,
@@ -136,6 +149,7 @@ function processIfc(text, config, nlsfbEntries) {
   const duplicateClassSet = new Set();
   const elementRecords = [];
   const twoDigitAssignments = new Map();
+  const missingClassificationElementIds = [];
 
   postProgress(30, 'Elementinformatie verzamelen');
   const progressStep = Math.max(1, Math.floor(candidates.length / 20));
@@ -144,6 +158,7 @@ function processIfc(text, config, nlsfbEntries) {
     const expressId = candidates[position];
     const entity = entities.get(expressId);
     if (!entity) continue;
+    const hasGeometry = hasGeometricRepresentation(entity, entities);
 
     if (position % progressStep === 0) {
       const progress = 30 + Math.floor((position / candidates.length) * 38);
@@ -204,13 +219,17 @@ function processIfc(text, config, nlsfbEntries) {
         }
       }
 
+      const rawSourceCode = String(sourceCode || '').trim();
       const canonicalSourceCode = canonicalizeClassificationCode(sourceCode, nlsfb.byCode);
       const officialSource = canonicalSourceCode ? nlsfb.byCode.get(canonicalSourceCode) : null;
-      if (officialSource) {
+      if (rawSourceCode.toUpperCase() === MISSING_NLSFB_CODE) {
+        sourceDescription = MISSING_NLSFB_DESCRIPTION;
+      } else if (officialSource) {
         sourceDescription = officialSource.name;
       } else {
+        sourceDescription = UNKNOWN_NLSFB_DESCRIPTION;
         summary.sourceDescriptionsMissing += 1;
-        const key = String(sourceCode || '').trim();
+        const key = rawSourceCode;
         if (key && !unresolvedCodeSet.has(key)) {
           unresolvedCodeSet.add(key);
           report.unresolvedClassificationCodes.push(key);
@@ -231,6 +250,12 @@ function processIfc(text, config, nlsfbEntries) {
       }
     } else {
       summary.sourceClassificationsMissing += 1;
+      if (hasGeometry) {
+        sourceCode = MISSING_NLSFB_CODE;
+        sourceDescription = MISSING_NLSFB_DESCRIPTION;
+        missingClassificationElementIds.push(expressId);
+        summary.missingClassificationsAssigned += 1;
+      }
     }
 
     const values = {
@@ -343,22 +368,63 @@ function processIfc(text, config, nlsfbEntries) {
     summary.processedElements += 1;
   }
 
-  if (twoDigitAssignments.size > 0) {
-    postProgress(86, 'NL-SfB indeling aanvullen');
-    let classificationId = findClassificationByName(twoDigitClassificationName, entityList);
+  if (missingClassificationElementIds.length > 0) {
+    postProgress(85, 'Ontbrekende NL-SfB coderingen markeren');
+    let classificationId = selectPrimaryClassificationSystemId(
+      index,
+      classificationSystemIdsToNormalize,
+      canonicalClassificationName,
+    );
 
     if (!classificationId) {
-      if (schema.key === 'IFC2X3') {
-        classificationId = addEntity(
-          'IFCCLASSIFICATION',
-          `${encodeStepString('ketenstandaard')},${encodeStepString('2021')},$,${encodeStepString(twoDigitClassificationName)}`,
-        );
-      } else {
-        classificationId = addEntity(
-          'IFCCLASSIFICATION',
-          `${encodeStepString('ketenstandaard')},${encodeStepString('2021')},$,${encodeStepString(twoDigitClassificationName)},$,${encodeStepString('https://data.ketenstandaard.nl/publications/nlsfb/2021')},$`,
-        );
-      }
+      classificationId = addClassificationEntity(
+        addEntity,
+        schema.key,
+        canonicalClassificationName,
+      );
+    }
+
+    const existingRefs = findClassificationReferencesForSource(classificationId, entityList, entities);
+    let referenceId = existingRefs.get(MISSING_NLSFB_CODE) || null;
+    if (!referenceId) {
+      referenceId = addClassificationReferenceEntity(
+        addEntity,
+        schema.key,
+        classificationId,
+        MISSING_NLSFB_CODE,
+        MISSING_NLSFB_DESCRIPTION,
+        null,
+      );
+      summary.missingClassificationReferencesCreated += 1;
+    }
+
+    const uniqueIds = Array.from(new Set(missingClassificationElementIds))
+      .filter((objectId) => !hasDirectClassificationReference(objectId, referenceId, index));
+    for (let start = 0; start < uniqueIds.length; start += CLASSIFICATION_BATCH_SIZE) {
+      const batch = uniqueIds.slice(start, start + CLASSIFICATION_BATCH_SIZE);
+      addEntity(
+        'IFCRELASSOCIATESCLASSIFICATION',
+        `${encodeStepString(createIfcGuid())},${ownerHistoryRef},$,$,(${batch.map((id) => `#${id}`).join(',')}),#${referenceId}`,
+      );
+      summary.missingClassificationRelationsCreated += 1;
+    }
+  }
+
+  if (twoDigitAssignments.size > 0) {
+    postProgress(87, 'NL-SfB indeling aanvullen');
+    let classificationId = findClassificationByNames(
+      [twoDigitClassificationName, ...LEGACY_TWO_DIGIT_CLASSIFICATION_NAMES],
+      entityList,
+    );
+
+    if (!classificationId) {
+      classificationId = addClassificationEntity(
+        addEntity,
+        schema.key,
+        twoDigitClassificationName,
+      );
+    } else {
+      twoDigitClassificationSystemIds.add(classificationId);
     }
 
     const existingRefs = findClassificationReferencesForSource(classificationId, entityList, entities);
@@ -366,21 +432,19 @@ function processIfc(text, config, nlsfbEntries) {
     for (const assignment of twoDigitAssignments.values()) {
       let referenceId = existingRefs.get(assignment.code) || null;
       if (!referenceId) {
-        if (schema.key === 'IFC2X3') {
-          referenceId = addEntity(
-            'IFCCLASSIFICATIONREFERENCE',
-            `${assignment.uri ? encodeStepString(assignment.uri) : '$'},${encodeStepString(assignment.code)},${assignment.name ? encodeStepString(assignment.name) : '$'},#${classificationId}`,
-          );
-        } else {
-          referenceId = addEntity(
-            'IFCCLASSIFICATIONREFERENCE',
-            `${assignment.uri ? encodeStepString(assignment.uri) : '$'},${encodeStepString(assignment.code)},${assignment.name ? encodeStepString(assignment.name) : '$'},#${classificationId},$,$`,
-          );
-        }
+        referenceId = addClassificationReferenceEntity(
+          addEntity,
+          schema.key,
+          classificationId,
+          assignment.code,
+          formatTwoDigitReferenceName(assignment.code, assignment.name),
+          assignment.uri,
+        );
         summary.twoDigitClassificationReferencesCreated += 1;
       }
 
-      const uniqueIds = Array.from(new Set(assignment.elementIds));
+      const uniqueIds = Array.from(new Set(assignment.elementIds))
+        .filter((objectId) => !hasDirectClassificationReference(objectId, referenceId, index));
       for (let start = 0; start < uniqueIds.length; start += CLASSIFICATION_BATCH_SIZE) {
         const batch = uniqueIds.slice(start, start + CLASSIFICATION_BATCH_SIZE);
         addEntity(
@@ -392,13 +456,18 @@ function processIfc(text, config, nlsfbEntries) {
     }
   }
 
-  const rewritten = rewriteClassificationSystemNames(
+  const rewritten = rewriteClassificationMetadata(
     dataText,
     entities,
+    index,
     classificationSystemIdsToNormalize,
+    twoDigitClassificationSystemIds,
+    nlsfb,
     canonicalClassificationName,
+    twoDigitClassificationName,
   );
-  summary.classificationSystemsNormalized = rewritten.changedCount;
+  summary.classificationSystemsNormalized = rewritten.systemNamesChangedCount;
+  summary.classificationDescriptionsNormalized = rewritten.referenceNamesChangedCount;
 
   if (!newLines.length && rewritten.changedCount === 0) {
     throw new Error('Er is geen nieuwe informatie gevonden om te structureren.');
@@ -914,9 +983,30 @@ function collectCandidateElements(index, entities, config) {
     }
   }
 
+  for (const entity of entities.values()) {
+    if (isTargetElement(entity, config) && hasGeometricRepresentation(entity, entities)) {
+      candidates.add(entity.id);
+    }
+  }
+
   return Array.from(candidates)
     .filter((id) => isTargetElement(entities.get(id), config))
     .sort((a, b) => a - b);
+}
+
+function hasGeometricRepresentation(entity, entities) {
+  if (!entity || !Array.isArray(entity.args) || entity.args.length <= 6) return false;
+  const representationIds = getRefIds(entity.args[6]);
+  if (!representationIds.length) return false;
+
+  return representationIds.some((representationId) => {
+    const representation = entities.get(representationId);
+    if (!representation) return false;
+    return representation.type === 'IFCPRODUCTDEFINITIONSHAPE'
+      || representation.type === 'IFCPRODUCTREPRESENTATION'
+      || representation.type === 'IFCSHAPEREPRESENTATION'
+      || representation.type.endsWith('REPRESENTATION');
+  });
 }
 
 function isTargetElement(entity, config) {
@@ -1136,8 +1226,7 @@ function findAliasIndex(systemName, aliases) {
   const normalizedSystem = normalizeSearchText(systemName);
   if (!normalizedSystem) return -1;
 
-  const generatedTwoDigitName = normalizeSearchText('NL-SfB tabel 1 - 2 cijferig');
-  if (normalizedSystem === generatedTwoDigitName) return -1;
+  if (isTwoDigitClassificationName(systemName)) return -1;
   if (normalizedSystem.includes('nlsfb')) return 0;
 
   for (let index = 0; index < aliases.length; index += 1) {
@@ -1210,23 +1299,56 @@ function canonicalizeClassificationCode(code, lookup) {
   return null;
 }
 
-function rewriteClassificationSystemNames(dataText, entities, classificationIds, canonicalName) {
+function rewriteClassificationMetadata(
+  dataText,
+  entities,
+  index,
+  primaryClassificationIds,
+  twoDigitClassificationIds,
+  nlsfb,
+  canonicalName,
+  twoDigitName,
+) {
   const replacements = [];
+  let systemNamesChangedCount = 0;
+  let referenceNamesChangedCount = 0;
 
-  for (const classificationId of classificationIds) {
-    const entity = entities.get(classificationId);
-    if (!entity || entity.type !== 'IFCCLASSIFICATION' || !Number.isInteger(entity.start) || !Number.isInteger(entity.end)) continue;
-    const currentName = getStringArg(entity, 3) || '';
-    if (currentName === canonicalName) continue;
+  for (const entity of entities.values()) {
+    if (!Number.isInteger(entity.start) || !Number.isInteger(entity.end)) continue;
 
-    const rawArgs = entity.rawArgs.slice();
-    while (rawArgs.length <= 3) rawArgs.push('$');
-    rawArgs[3] = encodeStepString(canonicalName);
-    replacements.push({
-      start: entity.start,
-      end: entity.end,
-      value: `#${entity.id}=${entity.type}(${rawArgs.join(',')});`,
-    });
+    if (entity.type === 'IFCCLASSIFICATION') {
+      let desiredName = null;
+      if (primaryClassificationIds.has(entity.id)) desiredName = canonicalName;
+      else if (twoDigitClassificationIds.has(entity.id)) desiredName = twoDigitName;
+      if (!desiredName || getStringArg(entity, 3) === desiredName) continue;
+
+      replacements.push(createEntityArgumentReplacement(entity, 3, desiredName));
+      systemNamesChangedCount += 1;
+      continue;
+    }
+
+    if (entity.type !== 'IFCCLASSIFICATIONREFERENCE') continue;
+    const reference = index.classificationRefs.get(entity.id);
+    if (!reference) continue;
+    const source = resolveClassificationSource(reference.sourceId, index, new Set());
+    const sourceId = source.id;
+    if (!sourceId) continue;
+
+    let desiredName = null;
+    if (primaryClassificationIds.has(sourceId)) {
+      desiredName = resolvePrimaryClassificationDescription(reference.code, nlsfb.byCode);
+    } else if (twoDigitClassificationIds.has(sourceId)) {
+      const twoDigitCode = deriveTwoDigitCode(reference.code) || String(reference.code || '').trim();
+      const official = twoDigitCode ? nlsfb.byCode.get(twoDigitCode) : null;
+      const description = twoDigitCode === MISSING_NLSFB_CODE
+        ? MISSING_NLSFB_DESCRIPTION
+        : official ? official.name : UNKNOWN_NLSFB_DESCRIPTION;
+      desiredName = formatTwoDigitReferenceName(twoDigitCode, description);
+    }
+
+    if (!desiredName || getStringArg(entity, 2) === desiredName) continue;
+    replacements.push(createEntityArgumentReplacement(entity, 2, desiredName));
+    referenceNamesChangedCount += 1;
   }
 
   replacements.sort((a, b) => b.start - a.start);
@@ -1235,7 +1357,44 @@ function rewriteClassificationSystemNames(dataText, entities, classificationIds,
     output = `${output.slice(0, replacement.start)}${replacement.value}${output.slice(replacement.end)}`;
   }
 
-  return { text: output, changedCount: replacements.length };
+  return {
+    text: output,
+    changedCount: replacements.length,
+    systemNamesChangedCount,
+    referenceNamesChangedCount,
+  };
+}
+
+function createEntityArgumentReplacement(entity, argumentIndex, value) {
+  const rawArgs = entity.rawArgs.slice();
+  while (rawArgs.length <= argumentIndex) rawArgs.push('$');
+  rawArgs[argumentIndex] = encodeStepString(value);
+  return {
+    start: entity.start,
+    end: entity.end,
+    value: `#${entity.id}=${entity.type}(${rawArgs.join(',')});`,
+  };
+}
+
+function resolvePrimaryClassificationDescription(code, lookup) {
+  const rawCode = String(code || '').trim();
+  if (rawCode.toUpperCase() === MISSING_NLSFB_CODE) return MISSING_NLSFB_DESCRIPTION;
+  const canonicalCode = canonicalizeClassificationCode(rawCode, lookup);
+  const official = canonicalCode ? lookup.get(canonicalCode) : null;
+  return official ? official.name : UNKNOWN_NLSFB_DESCRIPTION;
+}
+
+function formatTwoDigitReferenceName(code, description) {
+  const cleanCode = String(code || '').trim();
+  const cleanDescription = String(description || UNKNOWN_NLSFB_DESCRIPTION).trim() || UNKNOWN_NLSFB_DESCRIPTION;
+  return cleanCode ? `${cleanCode} | ${cleanDescription}` : cleanDescription;
+}
+
+function isTwoDigitClassificationName(name) {
+  const normalized = normalizeSearchText(name);
+  if (!normalized) return false;
+  const acceptedNames = [TWO_DIGIT_CLASSIFICATION_NAME, ...LEGACY_TWO_DIGIT_CLASSIFICATION_NAMES];
+  return acceptedNames.some((candidate) => normalized === normalizeSearchText(candidate));
 }
 
 function deriveTwoDigitCode(code) {
@@ -1410,13 +1569,65 @@ function normalizeTargetPsetName(value) {
   return name;
 }
 
-function findClassificationByName(name, entityList) {
-  const normalized = normalizeKey(name);
+function findClassificationByNames(names, entityList) {
+  const normalizedNames = new Set(names.map((name) => normalizeSearchText(name)));
   for (const entity of entityList) {
     if (entity.type !== 'IFCCLASSIFICATION') continue;
-    if (normalizeKey(getStringArg(entity, 3)) === normalized) return entity.id;
+    if (normalizedNames.has(normalizeSearchText(getStringArg(entity, 3)))) return entity.id;
   }
   return null;
+}
+
+function hasDirectClassificationReference(objectId, referenceId, index) {
+  const references = index.directClassificationsByObject.get(objectId) || [];
+  return references.includes(referenceId);
+}
+
+function selectPrimaryClassificationSystemId(index, classificationIds, canonicalName) {
+  const ids = Array.from(classificationIds);
+  if (!ids.length) return null;
+  const canonical = normalizeSearchText(canonicalName);
+
+  ids.sort((a, b) => {
+    const nameA = index.classificationNames.get(a) || '';
+    const nameB = index.classificationNames.get(b) || '';
+    const normalizedA = normalizeSearchText(nameA);
+    const normalizedB = normalizeSearchText(nameB);
+    const rankA = normalizedA === canonical ? 0 : normalizedA.includes('nlsfb') ? 1 : 2;
+    const rankB = normalizedB === canonical ? 0 : normalizedB.includes('nlsfb') ? 1 : 2;
+    return rankA - rankB || a - b;
+  });
+
+  return ids[0];
+}
+
+function addClassificationEntity(addEntity, schemaKey, name) {
+  if (schemaKey === 'IFC2X3') {
+    return addEntity(
+      'IFCCLASSIFICATION',
+      `${encodeStepString('ketenstandaard')},${encodeStepString('2021')},$,${encodeStepString(name)}`,
+    );
+  }
+  return addEntity(
+    'IFCCLASSIFICATION',
+    `${encodeStepString('ketenstandaard')},${encodeStepString('2021')},$,${encodeStepString(name)},$,${encodeStepString('https://data.ketenstandaard.nl/publications/nlsfb/2021')},$`,
+  );
+}
+
+function addClassificationReferenceEntity(addEntity, schemaKey, classificationId, code, name, uri) {
+  const location = uri ? encodeStepString(uri) : '$';
+  const identification = encodeStepString(code);
+  const referenceName = name ? encodeStepString(name) : '$';
+  if (schemaKey === 'IFC2X3') {
+    return addEntity(
+      'IFCCLASSIFICATIONREFERENCE',
+      `${location},${identification},${referenceName},#${classificationId}`,
+    );
+  }
+  return addEntity(
+    'IFCCLASSIFICATIONREFERENCE',
+    `${location},${identification},${referenceName},#${classificationId},$,$`,
+  );
 }
 
 function findClassificationReferencesForSource(classificationId, entityList, entities) {

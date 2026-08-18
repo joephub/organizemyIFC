@@ -35,7 +35,7 @@ Ondersteunde STEP IFC schema's:
 - IFC 4
 - IFC 4x3
 
-De tool voegt alleen waarden toe die al in het model aanwezig zijn. Standaard eigenschappen worden uitsluitend gelezen uit IFC PropertySets waarvan de naam past bij `Pset_.*Common`.
+Voor het eigenschappen tabje neemt de tool bestaande IFC waarden over. Standaard eigenschappen worden uitsluitend gelezen uit IFC PropertySets waarvan de naam past bij `Pset_.*Common`. De enige automatische aanvulling is de afgesproken NL-SfB code `XX` voor geometrische objecten zonder herkenbare NL-SfB codering.
 
 De standaardkoppelingen zijn:
 
@@ -53,3 +53,17 @@ Wijzigingen in de geavanceerde instellingen worden direct toegepast en lokaal in
 
 
 De visualisatie toont `FireRating` aan de modelzijde en `WBDBO` in het eigenschappen tabje. De waarde blijft daarbij één op één gelijk.
+
+## NL-SfB structurering
+
+Herkende NL-SfB classificaties krijgen de vaste naam `NL-SfB tabel 1`. De omschrijving van iedere bestaande classificatiecode wordt opnieuw uit `nlsfb2021.json` gelezen. Wanneer een code niet in de JSON voorkomt, wordt de omschrijving `Onbekende NL-SfB codering` gebruikt.
+
+Ieder geschikt IFC object met een geometrische representatie maar zonder herkenbare NL-SfB code krijgt:
+
+- code `XX`
+- omschrijving `Geen NL-SfB codering`
+
+Ruimtelijke objecten zoals `IfcBuildingStorey` krijgen deze code niet.
+
+De afgeleide classificatie heet `NL-SfB tabel 1 (2 cijferig)`. De naam van iedere classificatiereferentie wordt opgebouwd als `code | omschrijving`, bijvoorbeeld `53 | Water`.
+
