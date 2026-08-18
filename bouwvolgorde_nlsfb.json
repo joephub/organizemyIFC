@@ -1,17 +1,17 @@
 {
   "project_metadata": {
-    "description": "Standaard bouwvolgorde op basis van vaste NL-SfB stappen en bouwlagen ten behoeve van 4D planning.",
+    "description": "Standaard bouwvolgorde op basis van vaste NL-SfB stappen en de afgeronde Z hoogte van bouwlagen ten behoeve van 4D planning.",
     "author": "Organize my IFC",
-    "version": "2.0"
+    "version": "3.0"
   },
   "instellingen": {
     "eigenschap_code": "Bouwvolgorde code",
     "eigenschap_omschrijving": "Bouwvolgorde omschrijving",
-    "code_formaat": "{fase}.{bouwlaag}.{stap}",
-    "omschrijving_formaat": "{bouwlaag_naam} | {omschrijving}",
-    "bouwlaag_start": 10,
-    "bouwlaag_stap": 10,
-    "bouwlaag_breedte": 3,
+    "code_formaat": "{fase}.{bouwlaag_z}.{stap}",
+    "omschrijving_formaat": "{omschrijving}",
+    "bouwlaag_afronding_mm": 1,
+    "bouwlaag_z_breedte": 6,
+    "bouwlaag_onbekend_code": "XXXXXX",
     "fase_breedte": 2,
     "stap_breedte": 2,
     "onbekend_code": "XX",

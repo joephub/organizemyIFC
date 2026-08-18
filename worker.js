@@ -103,8 +103,16 @@ function processIfc(text, config, nlsfbEntries, constructionSequenceConfig) {
   const constructionSequence = config.addConstructionSequence === true
     ? normalizeConstructionSequenceConfig(constructionSequenceConfig)
     : null;
+  const lengthUnitScaleToMillimetres = constructionSequence
+    ? detectLengthUnitScaleToMillimetres(entityList, entities)
+    : 1;
   const storeySequence = constructionSequence
-    ? buildStoreySequence(entityList, entities)
+    ? buildStoreySequence(
+      entityList,
+      entities,
+      lengthUnitScaleToMillimetres,
+      constructionSequence.settings,
+    )
     : null;
 
   const classificationSystemIdsToNormalize = new Set();
@@ -166,6 +174,9 @@ function processIfc(text, config, nlsfbEntries, constructionSequenceConfig) {
       addConstructionSequence: Boolean(constructionSequence),
       constructionSequenceClassificationName: constructionSequence ? CONSTRUCTION_SEQUENCE_CLASSIFICATION_NAME : null,
       constructionSequenceVersion: constructionSequence ? constructionSequence.metadata.version : null,
+      constructionSequenceElevationUnit: constructionSequence ? 'mm' : null,
+      constructionSequenceElevationSource: storeySequence ? storeySequence.elevationSource : null,
+      constructionSequenceElevationRoundingMm: storeySequence ? storeySequence.elevationRoundingMm : null,
     },
     unresolvedClassificationCodes: [],
     duplicateClassificationCandidates: [],
@@ -1223,30 +1234,83 @@ function climbToStorey(startId, index, entities, externalVisited) {
 }
 
 
-function buildStoreySequence(entityList, entities) {
+function buildStoreySequence(
+  entityList,
+  entities,
+  lengthUnitScaleToMillimetres = 1,
+  constructionSettings = {},
+) {
+  const scaleToMillimetres = Number.isFinite(Number(lengthUnitScaleToMillimetres))
+    && Number(lengthUnitScaleToMillimetres) > 0
+    ? Number(lengthUnitScaleToMillimetres)
+    : 1;
+  const elevationRoundingMm = Number.isFinite(Number(constructionSettings.elevationRoundingMm))
+    && Number(constructionSettings.elevationRoundingMm) > 0
+    ? Number(constructionSettings.elevationRoundingMm)
+    : 1;
+  const elevationWidth = Number.isFinite(Number(constructionSettings.elevationWidth))
+    && Number(constructionSettings.elevationWidth) > 0
+    ? Math.round(Number(constructionSettings.elevationWidth))
+    : 6;
+  const unknownElevationCode = String(constructionSettings.unknownElevationCode || 'XXXXXX').trim()
+    || 'XXXXXX';
+
   const storeys = entityList
     .filter((entity) => entity.type === 'IFCBUILDINGSTOREY')
-    .map((entity) => ({
-      id: entity.id,
-      name: getStringArg(entity, 2) || `Bouwlaag ${entity.id}`,
-      elevation: getStoreyElevation(entity, entities),
-      rank: null,
-    }));
+    .map((entity) => {
+      const elevations = getStoreyElevationCandidates(entity, entities);
+      return {
+        id: entity.id,
+        name: getStringArg(entity, 2) || `Bouwlaag ${entity.id}`,
+        placementElevationMm: Number.isFinite(elevations.placement)
+          ? elevations.placement * scaleToMillimetres
+          : null,
+        attributeElevationMm: Number.isFinite(elevations.attribute)
+          ? elevations.attribute * scaleToMillimetres
+          : null,
+        elevation: null,
+        roundedElevationMm: null,
+        elevationCode: unknownElevationCode,
+        rank: null,
+      };
+    });
+
+  const elevationSource = chooseStoreyElevationSource(storeys, elevationRoundingMm);
+  for (const storey of storeys) {
+    const preferred = elevationSource === 'ObjectPlacement'
+      ? storey.placementElevationMm
+      : storey.attributeElevationMm;
+    const fallback = elevationSource === 'ObjectPlacement'
+      ? storey.attributeElevationMm
+      : storey.placementElevationMm;
+    storey.elevation = Number.isFinite(preferred) ? preferred : fallback;
+    storey.roundedElevationMm = Number.isFinite(storey.elevation)
+      ? roundConstructionElevation(storey.elevation, elevationRoundingMm)
+      : null;
+    storey.elevationCode = formatConstructionElevationCode(
+      storey.roundedElevationMm,
+      elevationWidth,
+      unknownElevationCode,
+    );
+  }
 
   const withElevation = storeys
-    .filter((storey) => Number.isFinite(storey.elevation))
-    .sort((a, b) => a.elevation - b.elevation || a.id - b.id);
+    .filter((storey) => Number.isFinite(storey.roundedElevationMm))
+    .sort((a, b) => (
+      a.roundedElevationMm - b.roundedElevationMm
+      || a.elevation - b.elevation
+      || a.id - b.id
+    ));
   const withoutElevation = storeys
-    .filter((storey) => !Number.isFinite(storey.elevation))
+    .filter((storey) => !Number.isFinite(storey.roundedElevationMm))
     .sort((a, b) => normalizeSearchText(a.name).localeCompare(normalizeSearchText(b.name), 'nl') || a.id - b.id);
 
   let rank = 0;
   let previousElevation = null;
-  const elevationTolerance = 1e-7;
   for (const storey of withElevation) {
-    if (previousElevation == null || Math.abs(storey.elevation - previousElevation) > elevationTolerance) {
+    if (previousElevation == null || storey.roundedElevationMm !== previousElevation) {
       rank += 1;
-      previousElevation = storey.elevation;
+      previousElevation = storey.roundedElevationMm;
     }
     storey.rank = rank;
   }
@@ -1266,21 +1330,181 @@ function buildStoreySequence(entityList, entities) {
     byId: new Map(ordered.map((storey) => [storey.id, storey])),
     ordered,
     maxRank: rank,
+    elevationSource,
+    elevationRoundingMm,
+    lengthUnitScaleToMillimetres: scaleToMillimetres,
   };
 }
 
-function getStoreyElevation(storey, entities) {
-  if (!storey) return null;
-  const directElevation = numericNodeValue(storey.args[9]);
-  if (Number.isFinite(directElevation)) return directElevation;
+function getStoreyElevationCandidates(storey, entities) {
+  if (!storey) return { placement: null, attribute: null };
   const placementId = getSingleRef(storey.args[5]);
-  return placementId ? resolvePlacementZ(placementId, entities, new Set()) : null;
+  const placementElevation = placementId
+    ? resolvePlacementZ(placementId, entities, new Set())
+    : null;
+  const attributeElevation = numericNodeValue(storey.args[9]);
+  return {
+    placement: Number.isFinite(placementElevation) ? placementElevation : null,
+    attribute: Number.isFinite(attributeElevation) ? attributeElevation : null,
+  };
+}
+
+function chooseStoreyElevationSource(storeys, roundingMm) {
+  const placement = getElevationSourceStats(storeys, 'placementElevationMm', roundingMm);
+  const attribute = getElevationSourceStats(storeys, 'attributeElevationMm', roundingMm);
+
+  if (!placement.count && !attribute.count) return 'ObjectPlacement';
+  if (!placement.count) return 'Elevation';
+  if (!attribute.count) return 'ObjectPlacement';
+  if (placement.distinct !== attribute.distinct) {
+    return placement.distinct > attribute.distinct ? 'ObjectPlacement' : 'Elevation';
+  }
+  if (placement.range !== attribute.range) {
+    return placement.range > attribute.range ? 'ObjectPlacement' : 'Elevation';
+  }
+  return placement.count >= attribute.count ? 'ObjectPlacement' : 'Elevation';
+}
+
+function getElevationSourceStats(storeys, key, roundingMm) {
+  const values = storeys
+    .map((storey) => storey[key])
+    .filter((value) => Number.isFinite(value));
+  const rounded = values.map((value) => roundConstructionElevation(value, roundingMm));
+  const unique = new Set(rounded.map((value) => String(value)));
+  const minimum = values.length ? Math.min(...values) : 0;
+  const maximum = values.length ? Math.max(...values) : 0;
+  return {
+    count: values.length,
+    distinct: unique.size,
+    range: maximum - minimum,
+  };
+}
+
+function roundConstructionElevation(valueMm, roundingMm) {
+  if (!Number.isFinite(valueMm)) return null;
+  const increment = Number.isFinite(roundingMm) && roundingMm > 0 ? roundingMm : 1;
+  const rounded = Math.round(valueMm / increment) * increment;
+  return Math.abs(rounded) < 1e-9 ? 0 : Number(rounded.toFixed(6));
+}
+
+function formatConstructionElevationCode(valueMm, width, unknownCode) {
+  if (!Number.isFinite(valueMm)) return unknownCode;
+  const rounded = Math.round(valueMm);
+  const sign = rounded < 0 ? '-' : '';
+  const magnitude = String(Math.abs(rounded)).padStart(Math.max(1, width), '0');
+  return `${sign}${magnitude}`;
+}
+
+function detectLengthUnitScaleToMillimetres(entityList, entities) {
+  const projectUnitIds = [];
+  for (const project of entityList) {
+    if (project.type !== 'IFCPROJECT') continue;
+    const assignmentId = getSingleRef(project.args[8]);
+    const assignment = assignmentId ? entities.get(assignmentId) : null;
+    if (assignment?.type === 'IFCUNITASSIGNMENT') {
+      projectUnitIds.push(...getRefIds(assignment.args[0]));
+    }
+  }
+
+  for (const unitId of projectUnitIds) {
+    const scale = resolveLengthUnitScaleToMillimetres(unitId, entities, new Set());
+    if (Number.isFinite(scale) && scale > 0) return scale;
+  }
+
+  for (const entity of entityList) {
+    if (!['IFCSIUNIT', 'IFCCONVERSIONBASEDUNIT', 'IFCCONVERSIONBASEDUNITWITHOFFSET', 'IFCCONTEXTDEPENDENTUNIT'].includes(entity.type)) {
+      continue;
+    }
+    const scale = resolveLengthUnitScaleToMillimetres(entity.id, entities, new Set());
+    if (Number.isFinite(scale) && scale > 0) return scale;
+  }
+
+  // Millimetres are the most common IFC export unit and preserve the previous behaviour.
+  return 1;
+}
+
+function resolveLengthUnitScaleToMillimetres(unitId, entities, visited) {
+  if (!unitId || visited.has(unitId)) return null;
+  visited.add(unitId);
+  const unit = entities.get(unitId);
+  if (!unit) return null;
+
+  if (unit.type === 'IFCSIUNIT') {
+    const unitType = String(stringValue(unit.args[1]) || '').toUpperCase();
+    const unitName = String(stringValue(unit.args[3]) || '').toUpperCase();
+    if (unitType !== 'LENGTHUNIT' || unitName !== 'METRE') return null;
+    const prefix = String(stringValue(unit.args[2]) || '').toUpperCase();
+    const prefixFactor = getSiPrefixFactor(prefix);
+    return Number.isFinite(prefixFactor) ? 1000 * prefixFactor : null;
+  }
+
+  if (unit.type === 'IFCCONVERSIONBASEDUNIT' || unit.type === 'IFCCONVERSIONBASEDUNITWITHOFFSET') {
+    const unitType = String(stringValue(unit.args[1]) || '').toUpperCase();
+    if (unitType !== 'LENGTHUNIT') return null;
+    const conversionId = getSingleRef(unit.args[3]);
+    const conversion = conversionId ? entities.get(conversionId) : null;
+    if (conversion?.type !== 'IFCMEASUREWITHUNIT') {
+      return getLengthUnitNameScaleToMillimetres(stringValue(unit.args[2]));
+    }
+    const factor = numericNodeValue(conversion.args[0]);
+    const baseUnitId = getSingleRef(conversion.args[1]);
+    const baseScale = baseUnitId
+      ? resolveLengthUnitScaleToMillimetres(baseUnitId, entities, visited)
+      : null;
+    if (Number.isFinite(factor) && Number.isFinite(baseScale)) return factor * baseScale;
+    return getLengthUnitNameScaleToMillimetres(stringValue(unit.args[2]));
+  }
+
+  if (unit.type === 'IFCCONTEXTDEPENDENTUNIT') {
+    const unitType = String(stringValue(unit.args[1]) || '').toUpperCase();
+    if (unitType !== 'LENGTHUNIT') return null;
+    return getLengthUnitNameScaleToMillimetres(stringValue(unit.args[2]));
+  }
+
+  return null;
+}
+
+function getSiPrefixFactor(prefix) {
+  const factors = {
+    EXA: 1e18,
+    PETA: 1e15,
+    TERA: 1e12,
+    GIGA: 1e9,
+    MEGA: 1e6,
+    KILO: 1e3,
+    HECTO: 1e2,
+    DECA: 1e1,
+    DECI: 1e-1,
+    CENTI: 1e-2,
+    MILLI: 1e-3,
+    MICRO: 1e-6,
+    NANO: 1e-9,
+    PICO: 1e-12,
+    FEMTO: 1e-15,
+    ATTO: 1e-18,
+  };
+  if (!prefix) return 1;
+  return Object.prototype.hasOwnProperty.call(factors, prefix) ? factors[prefix] : null;
+}
+
+function getLengthUnitNameScaleToMillimetres(value) {
+  const normalized = normalizeSearchText(value).replace(/\s+/g, '');
+  if (!normalized) return null;
+  if (['mm', 'millimeter', 'millimetre', 'millimeters', 'millimetres'].includes(normalized)) return 1;
+  if (['cm', 'centimeter', 'centimetre', 'centimeters', 'centimetres'].includes(normalized)) return 10;
+  if (['m', 'meter', 'metre', 'meters', 'metres'].includes(normalized)) return 1000;
+  if (['inch', 'inches', 'in'].includes(normalized)) return 25.4;
+  if (['foot', 'feet', 'ft'].includes(normalized)) return 304.8;
+  return null;
 }
 
 function findStoreyByObjectPlacement(entity, storeySequence, entities) {
   if (!entity || !storeySequence || !storeySequence.ordered.length) return null;
   const placementId = getSingleRef(entity.args[5]);
-  const objectZ = placementId ? resolvePlacementZ(placementId, entities, new Set()) : null;
+  const rawObjectZ = placementId ? resolvePlacementZ(placementId, entities, new Set()) : null;
+  const objectZ = Number.isFinite(rawObjectZ)
+    ? rawObjectZ * (storeySequence.lengthUnitScaleToMillimetres || 1)
+    : null;
   if (!Number.isFinite(objectZ)) return null;
 
   const elevatedStoreys = storeySequence.ordered.filter((storey) => Number.isFinite(storey.elevation));
@@ -1780,11 +2004,15 @@ function normalizeConstructionSequenceConfig(data) {
       || DEFAULT_CONSTRUCTION_SEQUENCE_DESCRIPTION_PROPERTY,
     codeFormat: String(rawSettings.code_formaat || '{fase}.{bouwlaag}.{stap}').trim()
       || '{fase}.{bouwlaag}.{stap}',
-    descriptionFormat: String(rawSettings.omschrijving_formaat || '{bouwlaag_naam} | {omschrijving}').trim()
-      || '{bouwlaag_naam} | {omschrijving}',
-    floorStart: toPositiveInteger(rawSettings.bouwlaag_start, 10),
-    floorStep: toPositiveInteger(rawSettings.bouwlaag_stap, 10),
-    floorWidth: toPositiveInteger(rawSettings.bouwlaag_breedte, 3),
+    descriptionFormat: String(rawSettings.omschrijving_formaat || '{omschrijving}').trim()
+      || '{omschrijving}',
+    elevationRoundingMm: toPositiveNumber(rawSettings.bouwlaag_afronding_mm, 1),
+    elevationWidth: toPositiveInteger(
+      rawSettings.bouwlaag_z_breedte ?? rawSettings.bouwlaag_breedte,
+      6,
+    ),
+    unknownElevationCode: String(rawSettings.bouwlaag_onbekend_code || 'XXXXXX').trim()
+      || 'XXXXXX',
     phaseWidth: toPositiveInteger(rawSettings.fase_breedte, 2),
     stepWidth: toPositiveInteger(rawSettings.stap_breedte, 2),
     missingCode: String(rawSettings.onbekend_code || DEFAULT_CONSTRUCTION_SEQUENCE_MISSING_CODE).trim()
@@ -1850,6 +2078,12 @@ function normalizeConstructionSequenceConfig(data) {
 function toPositiveInteger(value, fallback) {
   const number = Number(value);
   if (Number.isFinite(number) && number >= 0) return Math.round(number);
+  return fallback;
+}
+
+function toPositiveNumber(value, fallback) {
+  const number = Number(value);
+  if (Number.isFinite(number) && number > 0) return number;
   return fallback;
 }
 
@@ -1919,13 +2153,15 @@ function resolveConstructionSequenceAssignment({
     };
   }
 
-  const rank = Number(storeyInfo?.rank) || 0;
-  const floorNumber = rank > 0
-    ? settings.floorStart + ((rank - 1) * settings.floorStep)
-    : 0;
+  const elevationCode = storeyInfo?.elevationCode || settings.unknownElevationCode;
+  const roundedElevationMm = Number.isFinite(storeyInfo?.roundedElevationMm)
+    ? storeyInfo.roundedElevationMm
+    : null;
   const tokens = {
     fase: padConstructionNumber(rule.phaseId, settings.phaseWidth),
-    bouwlaag: padConstructionNumber(floorNumber, settings.floorWidth),
+    bouwlaag: elevationCode,
+    bouwlaag_z: elevationCode,
+    bouwlaag_z_mm: roundedElevationMm == null ? '' : String(roundedElevationMm),
     stap: padConstructionNumber(rule.stepNumber, settings.stepWidth),
     stap_id: rule.stepId,
     fase_naam: rule.phaseName,
