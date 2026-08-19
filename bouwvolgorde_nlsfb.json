@@ -1,8 +1,8 @@
 {
   "project_metadata": {
-    "description": "Standaard bouwvolgorde op basis van specifieke NL-SfB coderingen en de afgeronde Z hoogte van bouwlagen ten behoeve van 4D planning.",
+    "description": "Standaard bouwvolgorde uitsluitend op basis van NL-SfB tabel 1 coderingen en de afgeronde Z hoogte van bouwlagen ten behoeve van 4D planning.",
     "author": "Organize my IFC",
-    "version": "4.0"
+    "version": "6.0"
   },
   "instellingen": {
     "eigenschap_code": "Bouwvolgorde code",
@@ -57,46 +57,22 @@
         },
         {
           "stap_id": "1.3",
-          "omschrijving": "Constructieve vloer op grondslag",
-          "nlsfb_codes": [
-            "13.2",
-            "13"
-          ],
-          "toelichting": "Constructieve vloer die rechtstreeks op de grondslag ligt.",
-          "volgorde_nummer": 30,
-          "bouwlaag_selectie": "laagste",
-          "dragend": true
-        },
-        {
-          "stap_id": "1.4",
           "omschrijving": "Vloer op grondslag",
           "nlsfb_codes": [
             "13"
           ],
-          "toelichting": "Vloer op grondslag waarvan de constructiviteit niet uit de code of eigenschap blijkt.",
-          "volgorde_nummer": 35,
+          "toelichting": "Alle vloeren op grondslag worden als vloerconstructie behandeld. Het onderscheid tussen constructief en niet constructief verandert deze globale uitvoeringspositie niet.",
+          "volgorde_nummer": 30,
           "bouwlaag_selectie": "laagste"
         },
         {
-          "stap_id": "1.5",
-          "omschrijving": "Constructieve begane grondvloer",
+          "stap_id": "1.4",
+          "omschrijving": "Vloerconstructie",
           "nlsfb_codes": [
-            "23.2",
             "23"
           ],
-          "toelichting": "Constructieve vloer op het laagste gebouwpeil.",
+          "toelichting": "Alle NL-SfB 23 vloeren op de laagste bouwlaag worden als echte vloerconstructie behandeld.",
           "volgorde_nummer": 40,
-          "bouwlaag_selectie": "laagste",
-          "dragend": true
-        },
-        {
-          "stap_id": "1.6",
-          "omschrijving": "Begane grondvloer",
-          "nlsfb_codes": [
-            "23"
-          ],
-          "toelichting": "Vloer op het laagste gebouwpeil waarvan de constructiviteit niet uit de code of eigenschap blijkt.",
-          "volgorde_nummer": 45,
           "bouwlaag_selectie": "laagste"
         }
       ]
@@ -108,24 +84,12 @@
       "stappen": [
         {
           "stap_id": "2.0",
-          "omschrijving": "Constructieve verdiepingsvloer",
+          "omschrijving": "Vloerconstructie",
           "nlsfb_codes": [
-            "23.2",
             "23"
           ],
-          "toelichting": "De constructieve vloer op het eigen Z niveau wordt voor de dragende elementen op hetzelfde niveau geplaatst.",
+          "toelichting": "Alle NL-SfB 23 vloeren worden als echte vloerconstructie behandeld en komen op hun eigen Z niveau voor de dragende verticale elementen.",
           "volgorde_nummer": 0,
-          "bouwlaag_selectie": "vanaf_tweede",
-          "dragend": true
-        },
-        {
-          "stap_id": "2.05",
-          "omschrijving": "Verdiepingsvloer",
-          "nlsfb_codes": [
-            "23"
-          ],
-          "toelichting": "Vloer waarvan de constructiviteit niet uit de code of eigenschap blijkt.",
-          "volgorde_nummer": 5,
           "bouwlaag_selectie": "vanaf_tweede"
         },
         {
@@ -134,14 +98,11 @@
           "nlsfb_codes": [
             "21.2",
             "22.2",
-            "28",
-            "21",
-            "22"
+            "28"
           ],
-          "toelichting": "Dragende buitenwanden, binnenwanden en hoofddraagconstructies per bouwlaag.",
+          "toelichting": "Constructieve buitenwanden, constructieve binnenwanden en hoofddraagconstructies per bouwlaag.",
           "volgorde_nummer": 10,
-          "bouwlaag_selectie": "per_bouwlaag",
-          "dragend": true
+          "bouwlaag_selectie": "per_bouwlaag"
         },
         {
           "stap_id": "2.2",
@@ -164,13 +125,11 @@
           "stap_id": "3.1",
           "omschrijving": "Constructieve dakconstructie",
           "nlsfb_codes": [
-            "27.2",
-            "27"
+            "27.2"
           ],
           "toelichting": "Constructieve dakdelen op de hoogste bouwlaag.",
           "volgorde_nummer": 10,
-          "bouwlaag_selectie": "hoogste",
-          "dragend": true
+          "bouwlaag_selectie": "hoogste"
         },
         {
           "stap_id": "3.15",
@@ -186,13 +145,11 @@
           "stap_id": "3.2",
           "omschrijving": "Niet constructieve dakconstructie",
           "nlsfb_codes": [
-            "27.1",
-            "27"
+            "27.1"
           ],
           "toelichting": "Niet constructieve dakdelen op de hoogste bouwlaag.",
           "volgorde_nummer": 20,
-          "bouwlaag_selectie": "hoogste",
-          "dragend": false
+          "bouwlaag_selectie": "hoogste"
         },
         {
           "stap_id": "3.3",
@@ -208,54 +165,17 @@
     },
     {
       "fase_id": 4,
-      "fase_naam": "Niet constructieve vloeren en gevelsluiting",
+      "fase_naam": "Gevelsluiting",
       "bouwlaag_indicatie": "Per bouwlaag van onder naar boven",
       "stappen": [
-        {
-          "stap_id": "4.0",
-          "omschrijving": "Niet constructieve vloer",
-          "nlsfb_codes": [
-            "13.1",
-            "23.1",
-            "13",
-            "23"
-          ],
-          "toelichting": "Niet constructieve vloer, bijvoorbeeld een vrijdragende afwerkvloer.",
-          "volgorde_nummer": 0,
-          "bouwlaag_selectie": "per_bouwlaag",
-          "dragend": false
-        },
-        {
-          "stap_id": "4.05",
-          "omschrijving": "Vloer, constructiviteit niet gespecificeerd",
-          "nlsfb_codes": [
-            "13",
-            "23"
-          ],
-          "toelichting": "Vloer waarvan de constructiviteit niet uit de code of eigenschap blijkt.",
-          "volgorde_nummer": 5,
-          "bouwlaag_selectie": "per_bouwlaag"
-        },
         {
           "stap_id": "4.1",
           "omschrijving": "Niet dragende buitenwanden / Buitenspouwbladen",
           "nlsfb_codes": [
-            "21.1",
-            "21"
+            "21.1"
           ],
-          "toelichting": "Niet dragende buitenwanden en gevelvullingen.",
+          "toelichting": "Niet constructieve buitenwanden en gevelvullingen volgens de specifieke NL-SfB code 21.1.",
           "volgorde_nummer": 10,
-          "bouwlaag_selectie": "per_bouwlaag",
-          "dragend": false
-        },
-        {
-          "stap_id": "4.15",
-          "omschrijving": "Buitenwand, constructiviteit niet gespecificeerd",
-          "nlsfb_codes": [
-            "21"
-          ],
-          "toelichting": "Buitenwand waarvan de constructiviteit niet uit de code of eigenschap blijkt.",
-          "volgorde_nummer": 15,
           "bouwlaag_selectie": "per_bouwlaag"
         },
         {
@@ -272,69 +192,48 @@
     },
     {
       "fase_id": 5,
-      "fase_naam": "Afbouw & Binnenwanden",
+      "fase_naam": "Vaste binnenwanden en afbouwbasis",
       "bouwlaag_indicatie": "Per bouwlaag zodra de laag wind- en waterdicht is",
       "stappen": [
         {
           "stap_id": "5.1",
-          "omschrijving": "Niet dragende binnenwanden",
+          "omschrijving": "Massieve en spouw binnenwanden",
           "nlsfb_codes": [
-            "22.1",
-            "22"
+            "22.11",
+            "22.12"
           ],
-          "toelichting": "Niet dragende binnenwanden voor de ruimte-indeling.",
+          "toelichting": "Vaste niet constructieve massieve en spouw binnenwanden worden voor de vloerafwerklagen geplaatst.",
           "volgorde_nummer": 10,
-          "bouwlaag_selectie": "per_bouwlaag",
-          "dragend": false
-        },
-        {
-          "stap_id": "5.15",
-          "omschrijving": "Binnenwand, constructiviteit niet gespecificeerd",
-          "nlsfb_codes": [
-            "22"
-          ],
-          "toelichting": "Binnenwand waarvan de constructiviteit niet uit de code of eigenschap blijkt.",
-          "volgorde_nummer": 15,
           "bouwlaag_selectie": "per_bouwlaag"
         },
         {
           "stap_id": "5.2",
-          "omschrijving": "Binnenkozijnen en deuren",
-          "nlsfb_codes": [
-            "32"
-          ],
-          "toelichting": "Openingen en vullingen in binnenwanden.",
-          "volgorde_nummer": 20,
-          "bouwlaag_selectie": "per_bouwlaag"
-        },
-        {
-          "stap_id": "5.3",
           "omschrijving": "Vloeropeningen",
           "nlsfb_codes": [
             "33"
           ],
           "toelichting": "Openingen en vullingen in vloeren.",
+          "volgorde_nummer": 20,
+          "bouwlaag_selectie": "per_bouwlaag"
+        },
+        {
+          "stap_id": "5.3",
+          "omschrijving": "Balustrades en leuningen",
+          "nlsfb_codes": [
+            "34"
+          ],
+          "toelichting": "Balustrades en leuningen bij vloeren, trappen, hellingen en openingen.",
           "volgorde_nummer": 30,
           "bouwlaag_selectie": "per_bouwlaag"
         },
         {
           "stap_id": "5.4",
-          "omschrijving": "Balustrades en leuningen",
-          "nlsfb_codes": [
-            "34"
-          ],
-          "toelichting": "Balustrades en leuningen.",
-          "volgorde_nummer": 40,
-          "bouwlaag_selectie": "per_bouwlaag"
-        },
-        {
-          "stap_id": "5.5",
           "omschrijving": "Inbouwpakketten",
           "nlsfb_codes": [
             "38"
           ],
           "toelichting": "Samengestelde inbouwpakketten.",
-          "volgorde_nummer": 50,
+          "volgorde_nummer": 40,
           "bouwlaag_selectie": "per_bouwlaag"
         }
       ]
@@ -515,11 +414,65 @@
     },
     {
       "fase_id": 8,
-      "fase_naam": "Afwerkingen",
-      "bouwlaag_indicatie": "Na plaatsing van de bouwkundige elementen en de installatievoorbereiding",
+      "fase_naam": "Vloerafwerklagen",
+      "bouwlaag_indicatie": "Na installatievoorbereiding en voor systeemwanden",
       "stappen": [
         {
           "stap_id": "8.1",
+          "omschrijving": "Vloerafwerklagen",
+          "nlsfb_codes": [
+            "43.21"
+          ],
+          "toelichting": "NL-SfB 43.21 wordt als vroege vloerafwerklaag gepland. De code kan onder meer een dekvloer omvatten, maar de planning noemt bewust alleen de officiële categorie vloerafwerklagen.",
+          "volgorde_nummer": 10,
+          "bouwlaag_selectie": "per_bouwlaag"
+        }
+      ]
+    },
+    {
+      "fase_id": 9,
+      "fase_naam": "Systeemwanden en binnenopeningen",
+      "bouwlaag_indicatie": "Na vloerafwerklagen",
+      "stappen": [
+        {
+          "stap_id": "9.1",
+          "omschrijving": "Vaste systeemwanden",
+          "nlsfb_codes": [
+            "22.13"
+          ],
+          "toelichting": "Vaste niet constructieve systeemwanden worden na de vloerafwerklagen geplaatst.",
+          "volgorde_nummer": 10,
+          "bouwlaag_selectie": "per_bouwlaag"
+        },
+        {
+          "stap_id": "9.2",
+          "omschrijving": "Verplaatsbare systeemwanden",
+          "nlsfb_codes": [
+            "22.14"
+          ],
+          "toelichting": "Verplaatsbare systeemwanden worden na de vaste systeemwanden geplaatst.",
+          "volgorde_nummer": 20,
+          "bouwlaag_selectie": "per_bouwlaag"
+        },
+        {
+          "stap_id": "9.3",
+          "omschrijving": "Binnenkozijnen en deuren",
+          "nlsfb_codes": [
+            "32"
+          ],
+          "toelichting": "Openingen en vullingen in binnenwanden.",
+          "volgorde_nummer": 30,
+          "bouwlaag_selectie": "per_bouwlaag"
+        }
+      ]
+    },
+    {
+      "fase_id": 10,
+      "fase_naam": "Overige afwerkingen",
+      "bouwlaag_indicatie": "Na plaatsing van de bouwkundige elementen en systeemwanden",
+      "stappen": [
+        {
+          "stap_id": "10.1",
           "omschrijving": "Buitenwandafwerkingen",
           "nlsfb_codes": [
             "41"
@@ -529,7 +482,7 @@
           "bouwlaag_selectie": "per_bouwlaag"
         },
         {
-          "stap_id": "8.2",
+          "stap_id": "10.2",
           "omschrijving": "Binnenwandafwerkingen",
           "nlsfb_codes": [
             "42"
@@ -539,64 +492,72 @@
           "bouwlaag_selectie": "per_bouwlaag"
         },
         {
-          "stap_id": "8.3",
-          "omschrijving": "Vloerafwerkingen",
-          "nlsfb_codes": [
-            "43"
-          ],
-          "toelichting": "Afwerkingen die op de vloerconstructie of ondervloer worden aangebracht.",
-          "volgorde_nummer": 30,
-          "bouwlaag_selectie": "per_bouwlaag"
-        },
-        {
-          "stap_id": "8.4",
+          "stap_id": "10.3",
           "omschrijving": "Trap- en hellingafwerkingen",
           "nlsfb_codes": [
             "44"
           ],
           "toelichting": "Afwerkingen van trappen, hellingen en bordessen.",
-          "volgorde_nummer": 40,
+          "volgorde_nummer": 30,
           "bouwlaag_selectie": "per_bouwlaag"
         },
         {
-          "stap_id": "8.5",
+          "stap_id": "10.4",
           "omschrijving": "Plafondafwerkingen",
           "nlsfb_codes": [
             "45"
           ],
           "toelichting": "Afwerkingen aan de onderzijde van vloeren en daken.",
-          "volgorde_nummer": 50,
+          "volgorde_nummer": 40,
           "bouwlaag_selectie": "per_bouwlaag"
         },
         {
-          "stap_id": "8.6",
+          "stap_id": "10.5",
           "omschrijving": "Dakafwerkingen",
           "nlsfb_codes": [
             "47"
           ],
           "toelichting": "Afwerkingen en bekledingen van daken.",
-          "volgorde_nummer": 60,
+          "volgorde_nummer": 50,
           "bouwlaag_selectie": "hoogste"
         },
         {
-          "stap_id": "8.7",
+          "stap_id": "10.6",
           "omschrijving": "Afwerkingspakketten",
           "nlsfb_codes": [
             "48"
           ],
           "toelichting": "Samengestelde afwerkingspakketten.",
-          "volgorde_nummer": 70,
+          "volgorde_nummer": 60,
           "bouwlaag_selectie": "per_bouwlaag"
         }
       ]
     },
     {
-      "fase_id": 9,
+      "fase_id": 11,
+      "fase_naam": "Definitieve vloerafwerkingen",
+      "bouwlaag_indicatie": "Laat in de afbouw",
+      "stappen": [
+        {
+          "stap_id": "11.1",
+          "omschrijving": "Definitieve vloerafwerkingen",
+          "nlsfb_codes": [
+            "43.22",
+            "43.23"
+          ],
+          "toelichting": "Vloerbekledingen en systeemvloerafwerkingen worden als late, definitieve vloerafwerking gepland.",
+          "volgorde_nummer": 10,
+          "bouwlaag_selectie": "per_bouwlaag"
+        }
+      ]
+    },
+    {
+      "fase_id": 12,
       "fase_naam": "Vaste voorzieningen",
       "bouwlaag_indicatie": "Vaste stappen per bouwlaag",
       "stappen": [
         {
-          "stap_id": "9.1",
+          "stap_id": "12.1",
           "omschrijving": "Vaste verkeersvoorzieningen",
           "nlsfb_codes": [
             "71"
@@ -606,7 +567,7 @@
           "bouwlaag_selectie": "per_bouwlaag"
         },
         {
-          "stap_id": "9.2",
+          "stap_id": "12.2",
           "omschrijving": "Vaste gebruikersvoorzieningen",
           "nlsfb_codes": [
             "72"
@@ -616,7 +577,7 @@
           "bouwlaag_selectie": "per_bouwlaag"
         },
         {
-          "stap_id": "9.3",
+          "stap_id": "12.3",
           "omschrijving": "Vaste keukenvoorzieningen",
           "nlsfb_codes": [
             "73"
@@ -626,7 +587,7 @@
           "bouwlaag_selectie": "per_bouwlaag"
         },
         {
-          "stap_id": "9.4",
+          "stap_id": "12.4",
           "omschrijving": "Vaste sanitaire voorzieningen",
           "nlsfb_codes": [
             "74"
@@ -636,7 +597,7 @@
           "bouwlaag_selectie": "per_bouwlaag"
         },
         {
-          "stap_id": "9.5",
+          "stap_id": "12.5",
           "omschrijving": "Vaste onderhoudsvoorzieningen",
           "nlsfb_codes": [
             "75"
@@ -646,7 +607,7 @@
           "bouwlaag_selectie": "per_bouwlaag"
         },
         {
-          "stap_id": "9.6",
+          "stap_id": "12.6",
           "omschrijving": "Vaste opslagvoorzieningen",
           "nlsfb_codes": [
             "76"
@@ -656,7 +617,7 @@
           "bouwlaag_selectie": "per_bouwlaag"
         },
         {
-          "stap_id": "9.7",
+          "stap_id": "12.7",
           "omschrijving": "Vaste functionele voorzieningen",
           "nlsfb_codes": [
             "77"
@@ -668,12 +629,12 @@
       ]
     },
     {
-      "fase_id": 10,
+      "fase_id": 13,
       "fase_naam": "Terrein",
       "bouwlaag_indicatie": "Terrein of bouwlaag 000",
       "stappen": [
         {
-          "stap_id": "10.1",
+          "stap_id": "13.1",
           "omschrijving": "Terreinvoorzieningen",
           "nlsfb_codes": [
             "90"
@@ -685,12 +646,12 @@
       ]
     },
     {
-      "fase_id": 11,
+      "fase_id": 14,
       "fase_naam": "Losse inventaris",
       "bouwlaag_indicatie": "Vaste stappen per bouwlaag",
       "stappen": [
         {
-          "stap_id": "11.1",
+          "stap_id": "14.1",
           "omschrijving": "Losse verkeersinventaris",
           "nlsfb_codes": [
             "81"
@@ -700,7 +661,7 @@
           "bouwlaag_selectie": "per_bouwlaag"
         },
         {
-          "stap_id": "11.2",
+          "stap_id": "14.2",
           "omschrijving": "Losse gebruikersinventaris",
           "nlsfb_codes": [
             "82"
@@ -710,7 +671,7 @@
           "bouwlaag_selectie": "per_bouwlaag"
         },
         {
-          "stap_id": "11.3",
+          "stap_id": "14.3",
           "omschrijving": "Losse keukeninventaris",
           "nlsfb_codes": [
             "83"
@@ -720,7 +681,7 @@
           "bouwlaag_selectie": "per_bouwlaag"
         },
         {
-          "stap_id": "11.4",
+          "stap_id": "14.4",
           "omschrijving": "Losse sanitaire inventaris",
           "nlsfb_codes": [
             "84"
@@ -730,7 +691,7 @@
           "bouwlaag_selectie": "per_bouwlaag"
         },
         {
-          "stap_id": "11.5",
+          "stap_id": "14.5",
           "omschrijving": "Losse schoonmaakinventaris",
           "nlsfb_codes": [
             "85"
@@ -740,7 +701,7 @@
           "bouwlaag_selectie": "per_bouwlaag"
         },
         {
-          "stap_id": "11.6",
+          "stap_id": "14.6",
           "omschrijving": "Losse opslaginventaris",
           "nlsfb_codes": [
             "86"

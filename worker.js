@@ -2,7 +2,7 @@
 
 const MAX_WARNINGS = 250;
 const APP_NAME = 'Organize my IFC';
-const APP_VERSION = '12';
+const APP_VERSION = '14';
 const PROCESSING_RECORD_PSET_NAME = 'Cpset_OrganizeMyIFC';
 const CLASSIFICATION_BATCH_SIZE = 4000;
 const CANONICAL_CLASSIFICATION_NAME = 'NL-SfB tabel 1';
@@ -354,7 +354,6 @@ function processIfc(text, config, nlsfbEntries, constructionSequenceConfig) {
         sourceCodeIsValid,
         storeyInfo,
         storeySequence,
-        commonProperties,
         constructionSequence,
       });
 
@@ -2085,8 +2084,6 @@ function normalizeConstructionSequenceConfig(data) {
         step.volgorde_nummer,
         deriveConstructionStepNumber(stepId, stepIndex + 1),
       );
-      const loadBearing = typeof step.dragend === 'boolean' ? step.dragend : null;
-
       rules.push({
         phaseId,
         phaseName,
@@ -2095,7 +2092,6 @@ function normalizeConstructionSequenceConfig(data) {
         description: String(step.omschrijving || stepId).trim() || stepId,
         codes,
         floorSelection: normalizeFloorSelection(step.bouwlaag_selectie),
-        loadBearing,
         order,
       });
       order += 1;
@@ -2160,7 +2156,6 @@ function resolveConstructionSequenceAssignment({
   sourceCodeIsValid,
   storeyInfo,
   storeySequence,
-  commonProperties,
   constructionSequence,
 }) {
   const settings = constructionSequence.settings;
@@ -2173,14 +2168,10 @@ function resolveConstructionSequenceAssignment({
     };
   }
 
-  const loadBearingValue = parseBooleanLike(getMapValue(commonProperties, normalizeKey('LoadBearing')));
-  const inferredLoadBearing = inferLoadBearingFromNlsfbCode(canonicalSourceCode);
-  // Een specifieke NL-SfB code zoals 23.2 of 21.1 is leidend. Alleen bij een
-  // algemene code wordt LoadBearing gebruikt om de constructiviteit te bepalen.
-  const effectiveLoadBearing = inferredLoadBearing == null ? loadBearingValue : inferredLoadBearing;
+  // De bouwvolgorde gebruikt uitsluitend de NL-SfB code en de bouwlaaghoogte.
+  // Eigenschappen zoals LoadBearing hebben bewust geen invloed op de planning.
   const rule = findConstructionSequenceRule(
     canonicalSourceCode,
-    effectiveLoadBearing,
     storeyInfo,
     storeySequence,
     constructionSequence.rules,
@@ -2249,7 +2240,7 @@ function compareConstructionSequenceAssignments(a, b) {
   return String(a?.code || '').localeCompare(String(b?.code || ''), 'nl', { numeric: true });
 }
 
-function findConstructionSequenceRule(canonicalCode, loadBearing, storeyInfo, storeySequence, rules) {
+function findConstructionSequenceRule(canonicalCode, storeyInfo, storeySequence, rules) {
   const twoDigitCode = deriveTwoDigitCode(canonicalCode);
   let best = null;
 
@@ -2262,14 +2253,8 @@ function findConstructionSequenceRule(canonicalCode, loadBearing, storeyInfo, st
     }
     if (!codeScore) continue;
 
-    let conditionScore = 0;
-    if (rule.loadBearing != null && supportsConstructionLoadBearing(twoDigitCode)) {
-      if (loadBearing != null && loadBearing !== rule.loadBearing) continue;
-      conditionScore = loadBearing == null ? -25 : 100;
-    }
-
     const floorScore = rule.floorSelection === 'perFloor' ? 0 : 20;
-    const score = codeScore + conditionScore + floorScore;
+    const score = codeScore + floorScore;
     if (!best || score > best.score || (score === best.score && rule.order < best.rule.order)) {
       best = { rule, score };
     }
@@ -2297,25 +2282,6 @@ function constructionFloorMatches(selection, storeyInfo, storeySequence) {
   if (selection === 'highest') return rank === maxRank;
   if (selection === 'fromSecond') return rank >= 2;
   return true;
-}
-
-function supportsConstructionLoadBearing(twoDigitCode) {
-  return ['13', '21', '22', '23', '27'].includes(String(twoDigitCode || ''));
-}
-
-function inferLoadBearingFromNlsfbCode(code) {
-  const normalized = String(code || '').replace(',', '.');
-  if (/^(13|21|22|23|27)\.1/.test(normalized)) return false;
-  if (/^(13|21|22|23|27)\.2/.test(normalized)) return true;
-  return null;
-}
-
-function parseBooleanLike(value) {
-  if (value === true || value === false) return value;
-  const normalized = normalizeSearchText(value);
-  if (['true', 't', 'yes', 'ja', '1'].includes(normalized)) return true;
-  if (['false', 'f', 'no', 'nee', '0'].includes(normalized)) return false;
-  return null;
 }
 
 function padConstructionNumber(value, width) {

@@ -112,27 +112,66 @@ Wanneer de optie aan staat, krijgen geometrische IFC objecten twee extra eigensc
 
 Dezelfde informatie wordt als IFC classificatie toegevoegd met de naam `Bouwvolgorde`.
 
-De code gebruikt standaard het formaat `fase.Z hoogte.stap`. De Z hoogte van de gekoppelde `IfcBuildingStorey` wordt naar millimeters omgerekend en afgerond. De bouwlaagnaam heeft geen invloed op de code.
+De planning gebruikt uitsluitend:
 
-Voor een bouwlaag op 3800 millimeter ontstaat standaard deze volgorde:
+1. NL-SfB Tabel 1, de elemententabel
+2. De afgeronde Z hoogte van de gekoppelde `IfcBuildingStorey`
+
+Andere NL-SfB tabellen worden niet gelezen, gecombineerd of vereist. IFC eigenschappen, waaronder `LoadBearing`, worden evenmin gebruikt om de bouwvolgorde te bepalen. `LoadBearing` kan nog wel als aanwezige bronwaarde naar `Dragend` worden gebundeld in het gekozen eigenschappen tabje. Dit staat los van de planningslogica.
+
+De code gebruikt standaard het formaat `fase.Z hoogte.stap`. De Z hoogte wordt naar millimeters omgerekend en afgerond. De bouwlaagnaam heeft geen invloed op de code.
+
+### Vloerconstructies
+
+Alle codes binnen groep `23` worden als echte vloerconstructies behandeld. Zowel `23.1*` als `23.2*` komen dus op hun eigen Z niveau vóór de dragende wanden, kolommen en kernen van dat niveau. Het verschil tussen constructief en niet constructief blijft aanwezig in de oorspronkelijke NL-SfB classificatie, maar veroorzaakt geen andere globale uitvoeringspositie.
+
+Voor een bouwlaag op 3800 millimeter begint de volgorde bijvoorbeeld met:
 
 ```text
-02.003800.00  Constructieve verdiepingsvloer
+02.003800.00  Vloerconstructie
 02.003800.10  Dragende wanden, kolommen en kernen
 02.003800.20  Trappen en hellingbanen
-04.003800.00  Niet constructieve vloer
-04.003800.10  Niet dragende buitenwanden / Buitenspouwbladen
-05.003800.10  Niet dragende binnenwanden
-08.003800.10  Buitenwandafwerkingen
-08.003800.20  Binnenwandafwerkingen
-08.003800.30  Vloerafwerkingen
 ```
 
-De specifieke NL-SfB code is leidend. Daardoor wordt `23.2*` als constructieve vloer behandeld en krijgt deze een lager stapnummer dan dragende wanden op hetzelfde Z niveau. `23.1*` wordt als niet constructieve vloer behandeld. De groepen `21.1*`, `22.1*`, `21.2*` en `22.2*` worden eveneens afzonderlijk verwerkt.
+Ook groep `13` wordt als vloer op grondslag vóór de bovenliggende bouwkundige elementen geplaatst.
 
-Bij een algemene code zoals `23`, `21` of `22` gebruikt de tool de aanwezige IFC eigenschap `LoadBearing` wanneer deze beschikbaar is. Wanneer zowel de code als de eigenschap de constructiviteit niet aangeven, gebruikt de tool een neutrale regel met een eigen vaste code.
+### Binnenwanden en vloerafwerkingen
 
-De afwerkingsgroepen `41`, `42`, `43`, `44`, `45`, `47` en `48` staan in een afzonderlijke latere fase. Zij worden daardoor niet meer gemengd met de constructieve vloer, niet constructieve vloer of wanden.
+De vaste volgorde op een bouwlaag is:
+
+```text
+05.003800.10  Massieve en spouw binnenwanden
+08.003800.10  Vloerafwerklagen
+09.003800.10  Vaste systeemwanden
+09.003800.20  Verplaatsbare systeemwanden
+09.003800.30  Binnenkozijnen en deuren
+10.003800.20  Binnenwandafwerkingen
+10.003800.40  Plafondafwerkingen
+11.003800.10  Definitieve vloerafwerkingen
+```
+
+Daarbij worden de specifieke Tabel 1 codes als volgt gebruikt:
+
+| NL-SfB code | Bouwvolgorde |
+|---|---|
+| `22.11`, `22.12` | Massieve en spouw binnenwanden vóór de vloerafwerklagen |
+| `43.21` | Vloerafwerklagen, na installatievoorbereiding en vóór systeemwanden |
+| `22.13` | Vaste systeemwanden na de vloerafwerklagen |
+| `22.14` | Verplaatsbare systeemwanden na de vaste systeemwanden |
+| `43.22`, `43.23` | Definitieve vloerafwerkingen laat in de afbouw |
+
+`43.21` wordt bewust `Vloerafwerklagen` genoemd en niet automatisch `Dekvloer`. Tabel 1 maakt duidelijk dat dit een afwerklaag is, maar specificeert niet in ieder model eenduidig het materiaal of de exacte technische opbouw.
+
+De algemene codes `43`, `43.0`, `43.2` en `43.20` zijn onvoldoende specifiek om te bepalen of het om een vroege vloerlaag of een definitieve vloerafwerking gaat. Zij krijgen daarom geen bedachte positie en vallen terug op:
+
+```text
+Code: NM
+Omschrijving: Geen bouwvolgorde ingesteld voor deze NL-SfB code
+```
+
+Hetzelfde geldt voor andere geldige Tabel 1 codes waarvoor geen regel in `bouwvolgorde_nlsfb.json` staat.
+
+Algemene binnenwandcodes zoals `22`, `22.0`, `22.1` en `22.10` bevatten onvoldoende informatie om het wandtype en daarmee de uitvoeringspositie te bepalen. Voor deze codes wordt bewust niets afgeleid uit eigenschappen.
 
 Classificatiereferenties voor de bouwvolgorde worden in oplopende fase, Z hoogte en stap aangemaakt. Hierdoor tonen viewers die de IFC volgorde volgen de classificatiereferenties eveneens in een logische volgorde.
 
@@ -148,7 +187,6 @@ In `bouwvolgorde_nlsfb.json` zijn onder meer deze instellingen aanpasbaar:
 8. `nlsfb_codes`
 9. `bouwlaag_selectie`
 10. `omschrijving`
-11. `dragend`
 
 De standaard afronding is één millimeter. Door `bouwlaag_afronding_mm` bijvoorbeeld op `10` of `100` te zetten, kunnen kleine hoogteverschillen tussen discipline modellen worden geneutraliseerd. De bestandsnaam moet `bouwvolgorde_nlsfb.json` blijven.
 
@@ -161,7 +199,7 @@ Code: XX
 Omschrijving: Geen bouwvolgorde omdat NL-SfB code ontbreekt
 ```
 
-Een geldige NL-SfB code waarvoor geen regel in `bouwvolgorde_nlsfb.json` staat, krijgt standaard:
+Een geldige NL-SfB Tabel 1 code waarvoor geen regel in `bouwvolgorde_nlsfb.json` staat, krijgt standaard:
 
 ```text
 Code: NM
