@@ -1,6 +1,9 @@
 'use strict';
 
 const MAX_WARNINGS = 250;
+const APP_NAME = 'Organize my IFC';
+const APP_VERSION = '12';
+const PROCESSING_RECORD_PSET_NAME = 'Cpset_OrganizeMyIFC';
 const CLASSIFICATION_BATCH_SIZE = 4000;
 const CANONICAL_CLASSIFICATION_NAME = 'NL-SfB tabel 1';
 const TWO_DIGIT_CLASSIFICATION_NAME = 'NL-SfB tabel 1 (2 cijferig)';
@@ -76,6 +79,7 @@ function processIfc(text, config, nlsfbEntries, constructionSequenceConfig) {
 
   const maxId = findMaxExpressId(dataText);
   const newline = text.includes('\r\n') ? '\r\n' : '\n';
+  const processedAt = new Date().toISOString();
   const warnings = [];
   let totalWarningCount = 0;
 
@@ -157,12 +161,14 @@ function processIfc(text, config, nlsfbEntries, constructionSequenceConfig) {
     constructionSequenceUnmapped: 0,
     constructionSequenceWithoutStorey: 0,
     elementsWithoutStorey: 0,
+    processingRecordAdded: 0,
+    processingRecordUpdated: 0,
     warningsShown: 0,
     warningCount: 0,
   };
 
   const report = {
-    generatedAt: new Date().toISOString(),
+    generatedAt: processedAt,
     schema: schema.display,
     sourceFile: config.sourceFileName || '',
     targetPsetName,
@@ -177,6 +183,9 @@ function processIfc(text, config, nlsfbEntries, constructionSequenceConfig) {
       constructionSequenceElevationUnit: constructionSequence ? 'mm' : null,
       constructionSequenceElevationSource: storeySequence ? storeySequence.elevationSource : null,
       constructionSequenceElevationRoundingMm: storeySequence ? storeySequence.elevationRoundingMm : null,
+      processingRecordPsetName: PROCESSING_RECORD_PSET_NAME,
+      applicationName: APP_NAME,
+      applicationVersion: APP_VERSION,
     },
     unresolvedClassificationCodes: [],
     duplicateClassificationCandidates: [],
@@ -606,6 +615,28 @@ function processIfc(text, config, nlsfbEntries, constructionSequenceConfig) {
     }
   }
 
+  const processingOperations = buildProcessingOperations({
+    targetPsetName,
+    processedElements: summary.processedElements,
+    sourceClassificationsFound: summary.sourceClassificationsFound,
+    missingClassificationsAssigned: summary.missingClassificationsAssigned,
+    twoDigitAssignments: twoDigitAssignments.size,
+    constructionSequenceAssignments: constructionSequence ? constructionSequenceAssignments.size : 0,
+  });
+  const processingRecord = addOrUpdateProcessingRecord({
+    addEntity,
+    projectId: index.projectId,
+    index,
+    entities,
+    ownerHistoryRef,
+    sourceFileName: config.sourceFileName || '',
+    processedAt,
+    operations: processingOperations,
+    addWarning,
+  });
+  summary.processingRecordAdded = processingRecord.added ? 1 : 0;
+  summary.processingRecordUpdated = processingRecord.updated ? 1 : 0;
+
   const rewritten = rewriteClassificationMetadata(
     dataText,
     entities,
@@ -620,6 +651,7 @@ function processIfc(text, config, nlsfbEntries, constructionSequenceConfig) {
     canonicalClassificationName,
     twoDigitClassificationName,
     CONSTRUCTION_SEQUENCE_CLASSIFICATION_NAME,
+    processingRecord.replacements,
   );
   summary.classificationSystemsNormalized = rewritten.systemNamesChangedCount;
   summary.classificationDescriptionsNormalized = rewritten.referenceNamesChangedCount;
@@ -986,9 +1018,11 @@ function buildIndex(entityList, entities, schemaKey, config, addWarning) {
   const classificationRefs = new Map();
   const classificationNames = new Map();
   let ownerHistoryId = null;
+  let projectId = null;
 
   for (const entity of entityList) {
     if (!ownerHistoryId && entity.type === 'IFCOWNERHISTORY') ownerHistoryId = entity.id;
+    if (!projectId && entity.type === 'IFCPROJECT') projectId = entity.id;
 
     if (entity.type === 'IFCPROPERTYSET') {
       psetNameById.set(entity.id, getStringArg(entity, 2) || '');
@@ -1120,6 +1154,7 @@ function buildIndex(entityList, entities, schemaKey, config, addWarning) {
     classificationRefs,
     classificationNames,
     ownerHistoryId,
+    projectId,
   };
 }
 
@@ -1831,8 +1866,9 @@ function rewriteClassificationMetadata(
   canonicalName,
   twoDigitName,
   constructionSequenceName,
+  additionalReplacements = [],
 ) {
-  const replacements = [];
+  const replacements = Array.isArray(additionalReplacements) ? [...additionalReplacements] : [];
   let systemNamesChangedCount = 0;
   let referenceNamesChangedCount = 0;
   let twoDigitRelationsCleanedCount = 0;
@@ -2392,6 +2428,7 @@ function serializeNominalValue(type, value) {
   }
 
   if (type === 'identifier') return `IFCIDENTIFIER(${encodeStepString(String(value))})`;
+  if (type === 'text') return `IFCTEXT(${encodeStepString(String(value))})`;
   if (typeof value === 'number' && Number.isFinite(value)) return `IFCREAL(${formatNumber(value)})`;
   return `IFCLABEL(${encodeStepString(String(value))})`;
 }
@@ -2461,6 +2498,119 @@ function compileCommonPsetRegex(pattern) {
   } catch (error) {
     throw new Error(`Ongeldig Common Pset patroon: ${error.message}`);
   }
+}
+
+function buildProcessingOperations({
+  targetPsetName,
+  processedElements,
+  sourceClassificationsFound,
+  missingClassificationsAssigned,
+  twoDigitAssignments,
+  constructionSequenceAssignments,
+}) {
+  const operations = [];
+  if (Number(processedElements || 0) > 0) {
+    operations.push(`Eigenschappen gebundeld in ${targetPsetName}`);
+  }
+  if (Number(sourceClassificationsFound || 0) > 0 || Number(missingClassificationsAssigned || 0) > 0) {
+    operations.push('NL-SfB classificatie geharmoniseerd');
+  }
+  if (Number(twoDigitAssignments || 0) > 0) {
+    operations.push('NL-SfB tabel 1 (2 cijferig) toegevoegd');
+  }
+  if (Number(constructionSequenceAssignments || 0) > 0) {
+    operations.push('Bouwvolgorde toegevoegd');
+  }
+  return operations.length ? operations.join('; ') : 'IFC model gecontroleerd';
+}
+
+function addOrUpdateProcessingRecord({
+  addEntity,
+  projectId,
+  index,
+  entities,
+  ownerHistoryRef,
+  sourceFileName,
+  processedAt,
+  operations,
+  addWarning,
+}) {
+  const result = { added: false, updated: false, replacements: [] };
+  if (!projectId || !entities.get(projectId)) {
+    addWarning('PROJECT_MISSING', 'Geen IfcProject gevonden. De verwerkingsinformatie van Organize my IFC kon niet op projectniveau worden toegevoegd.');
+    return result;
+  }
+
+  const values = [
+    { name: 'Applicatie', type: 'label', value: APP_NAME },
+    { name: 'Versie', type: 'label', value: APP_VERSION },
+    { name: 'Verwerkt op', type: 'label', value: processedAt },
+    { name: 'Bronbestand', type: 'label', value: truncateIfcLabel(sourceFileName || '') },
+    { name: 'Bewerkingen', type: 'text', value: operations },
+  ];
+
+  const directPsetIds = index.directPsetsByObject.get(projectId) || [];
+  const existingPsetId = directPsetIds.find((psetId) => (
+    normalizeKey(index.psetNameById.get(psetId) || getStringArg(entities.get(psetId), 2))
+      === normalizeKey(PROCESSING_RECORD_PSET_NAME)
+  )) || null;
+
+  if (!existingPsetId) {
+    const propertyIds = values.map((item) => addEntity(
+      'IFCPROPERTYSINGLEVALUE',
+      `${encodeStepString(item.name)},$,${serializeNominalValue(item.type, item.value)},$`,
+    ));
+    const psetId = addEntity(
+      'IFCPROPERTYSET',
+      `${encodeStepString(createIfcGuid())},${ownerHistoryRef},${encodeStepString(PROCESSING_RECORD_PSET_NAME)},${encodeStepString('Verwerkingsinformatie van Organize my IFC')},(${propertyIds.map((id) => `#${id}`).join(',')})`,
+    );
+    addEntity(
+      'IFCRELDEFINESBYPROPERTIES',
+      `${encodeStepString(createIfcGuid())},${ownerHistoryRef},$,$,(#${projectId}),#${psetId}`,
+    );
+    result.added = true;
+    return result;
+  }
+
+  const psetEntity = entities.get(existingPsetId);
+  const existingPropertyIds = Array.from(new Set(index.psetProperties.get(existingPsetId) || []));
+  const propertyByName = new Map();
+  for (const propertyId of existingPropertyIds) {
+    const property = entities.get(propertyId);
+    if (!property || property.type !== 'IFCPROPERTYSINGLEVALUE') continue;
+    propertyByName.set(normalizeKey(getStringArg(property, 0)), property);
+  }
+
+  const addedPropertyIds = [];
+  for (const item of values) {
+    const existingProperty = propertyByName.get(normalizeKey(item.name));
+    const nominalValue = serializeNominalValue(item.type, item.value);
+    if (existingProperty) {
+      result.replacements.push(createEntityRawArgumentReplacement(existingProperty, 2, nominalValue));
+    } else {
+      addedPropertyIds.push(addEntity(
+        'IFCPROPERTYSINGLEVALUE',
+        `${encodeStepString(item.name)},$,${nominalValue},$`,
+      ));
+    }
+  }
+
+  if (addedPropertyIds.length && psetEntity) {
+    const allPropertyIds = [...existingPropertyIds, ...addedPropertyIds];
+    result.replacements.push(createEntityRawArgumentReplacement(
+      psetEntity,
+      4,
+      `(${allPropertyIds.map((id) => `#${id}`).join(',')})`,
+    ));
+  }
+
+  result.updated = true;
+  return result;
+}
+
+function truncateIfcLabel(value) {
+  const chars = Array.from(String(value || ''));
+  return chars.length <= 255 ? chars.join('') : chars.slice(0, 255).join('');
 }
 
 function normalizeTargetPsetName(value) {

@@ -53,6 +53,7 @@
       selectedFileState: document.getElementById('selectedFileState'),
       selectedFileName: document.getElementById('selectedFileName'),
       selectedFileMeta: document.getElementById('selectedFileMeta'),
+      selectedFileList: document.getElementById('selectedFileList'),
       removeFileButton: document.getElementById('removeFileButton'),
       psetNameInput: document.getElementById('psetNameInput'),
       visualPsetName: document.getElementById('visualPsetName'),
@@ -63,9 +64,11 @@
       progressBar: document.getElementById('progressBar'),
       statusMessage: document.getElementById('statusMessage'),
       resultCard: document.getElementById('resultCard'),
+      resultTitle: document.getElementById('resultTitle'),
       resultFileDescription: document.getElementById('resultFileDescription'),
       resultSummary: document.getElementById('resultSummary'),
       downloadIfcLink: document.getElementById('downloadIfcLink'),
+      downloadButtonLabel: document.getElementById('downloadButtonLabel'),
       warningNotice: document.getElementById('warningNotice'),
       warningDetails: document.getElementById('warningDetails'),
       warningSummary: document.getElementById('warningSummary'),
@@ -75,9 +78,10 @@
       processButtonLabel: document.getElementById('processButtonLabel'),
     };
 
-    let selectedFile = null;
+    let selectedFiles = [];
     let activeWorker = null;
     let outputIfcUrl = null;
+    let isProcessing = false;
     let activeNlsfbEntries = [];
     let nlsfbReady = false;
     let activeConstructionSequenceConfig = null;
@@ -155,17 +159,17 @@
       });
 
       elements.ifcFileInput.addEventListener('change', () => {
-        const file = elements.ifcFileInput.files && elements.ifcFileInput.files[0];
-        if (file) setSelectedFile(file);
+        const files = Array.from(elements.ifcFileInput.files || []);
+        if (files.length) setSelectedFiles(files);
       });
 
       elements.dropzone.addEventListener('click', (event) => {
-        if (event.target.closest('#removeFileButton')) return;
+        if (isProcessing || event.target.closest('#removeFileButton')) return;
         elements.ifcFileInput.click();
       });
 
       elements.dropzone.addEventListener('keydown', (event) => {
-        if (event.key === 'Enter' || event.key === ' ') {
+        if (!isProcessing && (event.key === 'Enter' || event.key === ' ')) {
           event.preventDefault();
           elements.ifcFileInput.click();
         }
@@ -186,13 +190,14 @@
       });
 
       elements.dropzone.addEventListener('drop', (event) => {
-        const file = event.dataTransfer && event.dataTransfer.files && event.dataTransfer.files[0];
-        if (file) setSelectedFile(file);
+        if (isProcessing) return;
+        const files = Array.from(event.dataTransfer && event.dataTransfer.files || []);
+        if (files.length) setSelectedFiles(files);
       });
 
       elements.removeFileButton.addEventListener('click', (event) => {
         event.stopPropagation();
-        clearSelectedFile();
+        clearSelectedFiles();
       });
 
       elements.processButton.addEventListener('click', processSelectedIfc);
@@ -471,32 +476,57 @@
       }
     }
 
-    function setSelectedFile(file) {
+    function setSelectedFiles(files) {
+      if (isProcessing) return;
       clearMainError();
-      if (!file || !/\.ifc$/i.test(file.name)) {
-        showMainError('Kies een bestand met de extensie .ifc.');
+      const incoming = Array.from(files || []);
+      if (!incoming.length) return;
+
+      const invalidFiles = incoming.filter((file) => !file || !/\.ifc$/i.test(file.name));
+      if (invalidFiles.length) {
+        showMainError('Kies alleen bestanden met de extensie .ifc.');
         return;
       }
-      selectedFile = file;
+
+      selectedFiles = incoming;
       elements.ifcFileInput.value = '';
       resetResult();
       updateFileState();
     }
 
-    function clearSelectedFile() {
-      selectedFile = null;
+    function clearSelectedFiles() {
+      if (isProcessing) return;
+      selectedFiles = [];
       elements.ifcFileInput.value = '';
       resetResult();
       updateFileState();
     }
 
     function updateFileState() {
-      const hasFile = Boolean(selectedFile);
-      elements.emptyFileState.hidden = hasFile;
-      elements.selectedFileState.hidden = !hasFile;
-      if (hasFile) {
-        elements.selectedFileName.textContent = selectedFile.name;
-        elements.selectedFileMeta.textContent = `${formatBytes(selectedFile.size)} · lokaal bestand`;
+      const count = selectedFiles.length;
+      const hasFiles = count > 0;
+      elements.emptyFileState.hidden = hasFiles;
+      elements.selectedFileState.hidden = !hasFiles;
+      elements.selectedFileList.innerHTML = '';
+
+      if (hasFiles) {
+        const totalSize = selectedFiles.reduce((sum, file) => sum + Number(file.size || 0), 0);
+        if (count === 1) {
+          elements.selectedFileName.textContent = selectedFiles[0].name;
+          elements.selectedFileMeta.textContent = `${formatBytes(totalSize)} · lokaal bestand`;
+          elements.selectedFileList.hidden = true;
+          elements.removeFileButton.textContent = 'Verwijderen';
+        } else {
+          elements.selectedFileName.textContent = `${count.toLocaleString('nl-NL')} IFC modellen geselecteerd`;
+          elements.selectedFileMeta.textContent = `${formatBytes(totalSize)} · lokale bestanden`;
+          elements.selectedFileList.hidden = false;
+          elements.removeFileButton.textContent = 'Alles verwijderen';
+          for (const file of selectedFiles) {
+            const item = document.createElement('li');
+            item.textContent = `${file.name} · ${formatBytes(file.size)}`;
+            elements.selectedFileList.appendChild(item);
+          }
+        }
       }
       updateProcessButton();
     }
@@ -507,7 +537,7 @@
     }
 
     function updateProcessButton() {
-      elements.processButton.disabled = !selectedFile || !elements.psetNameInput.value.trim() || !nlsfbReady || (settings.addConstructionSequence && !constructionSequenceReady) || Boolean(activeWorker);
+      elements.processButton.disabled = !selectedFiles.length || !elements.psetNameInput.value.trim() || !nlsfbReady || (settings.addConstructionSequence && !constructionSequenceReady) || isProcessing;
     }
 
     async function processSelectedIfc() {
@@ -515,105 +545,176 @@
       resetResult();
 
       try {
-        if (!selectedFile) throw new Error('Kies eerst een IFC bestand.');
+        if (!selectedFiles.length) throw new Error('Kies eerst één of meer IFC bestanden.');
         const targetPsetName = elements.psetNameInput.value.trim();
         if (!targetPsetName) throw new Error('Kies een naam voor jouw eigenschappen tabje.');
 
         validateSettings(settings);
-        setBusy(true);
-        updateProgress(0, 'Voorbereiden');
-        elements.statusCard.hidden = false;
-
         if (!nlsfbReady) throw new Error('De NL-SfB lijst is nog niet beschikbaar.');
         if (settings.addConstructionSequence && !constructionSequenceReady) {
           throw new Error('De bouwvolgorde kon niet worden geladen. Controleer of bouwvolgorde_nlsfb.json naast index.html staat.');
         }
+
+        setBusy(true);
+        updateProgress(0, 'Voorbereiden');
+        elements.statusCard.hidden = false;
+
+        const filesToProcess = [...selectedFiles];
+        const results = [];
+        const failures = [];
+
+        for (let index = 0; index < filesToProcess.length; index += 1) {
+          const file = filesToProcess[index];
+          try {
+            const result = await processIfcFile(file, index, filesToProcess.length, targetPsetName);
+            results.push({ ...result, sourceFile: file });
+          } catch (error) {
+            failures.push({
+              fileName: file.name,
+              message: error && error.message ? error.message : String(error),
+            });
+          }
+        }
+
+        if (!results.length) {
+          const firstFailure = failures[0];
+          throw new Error(firstFailure ? `${firstFailure.fileName}: ${firstFailure.message}` : 'Geen van de IFC bestanden kon worden verwerkt.');
+        }
+
+        updateProgress(filesToProcess.length > 1 ? 98 : 100, filesToProcess.length > 1 ? 'Downloadbestand maken' : 'Gereed');
+        await showResult(results, failures, targetPsetName, filesToProcess.length);
+      } catch (error) {
+        elements.statusCard.hidden = true;
+        showMainError(error.message || String(error));
+      } finally {
+        stopActiveWorker();
+        setBusy(false);
+      }
+    }
+
+    function processIfcFile(file, fileIndex, totalFiles, targetPsetName) {
+      return new Promise((resolve, reject) => {
         const worker = new Worker('./worker.js');
         activeWorker = worker;
+        let settled = false;
 
-        worker.onmessage = async (event) => {
+        const finish = () => {
+          if (activeWorker === worker) activeWorker = null;
+          worker.terminate();
+        };
+
+        worker.onmessage = (event) => {
           const message = event.data || {};
           if (message.type === 'progress') {
-            updateProgress(message.percent, message.message);
+            const fileProgress = Math.max(0, Math.min(100, Number(message.percent) || 0));
+            const overallProgress = ((fileIndex + fileProgress / 100) / totalFiles) * 100;
+            const prefix = totalFiles > 1 ? `Model ${fileIndex + 1} van ${totalFiles} · ` : '';
+            updateProgress(overallProgress, `${prefix}${message.message || ''}`);
             return;
           }
 
           if (message.type === 'error') {
-            finishWorker();
-            elements.statusCard.hidden = true;
-            showMainError(message.message || 'De IFC verwerking is mislukt.');
+            if (settled) return;
+            settled = true;
+            finish();
+            reject(new Error(message.message || 'De IFC verwerking is mislukt.'));
             return;
           }
 
           if (message.type === 'done') {
-            finishWorker();
-            updateProgress(100, 'Gereed');
-            elements.statusCard.hidden = true;
-            await showResult(message.blob, message.summary, message.report, targetPsetName);
+            if (settled) return;
+            settled = true;
+            finish();
+            resolve({
+              blob: message.blob,
+              summary: message.summary || {},
+              report: message.report || {},
+            });
           }
         };
 
         worker.onerror = (event) => {
-          finishWorker();
-          elements.statusCard.hidden = true;
-          showMainError(event.message || 'De verwerkingsmodule kon niet worden gestart.');
+          if (settled) return;
+          settled = true;
+          finish();
+          reject(new Error(event.message || 'De verwerkingsmodule kon niet worden gestart.'));
         };
 
         worker.postMessage({
           type: 'process',
-          file: selectedFile,
+          file,
           config: {
             ...settings,
             targetPsetName,
-            sourceFileName: selectedFile.name,
+            sourceFileName: file.name,
           },
           nlsfbEntries: activeNlsfbEntries,
           constructionSequenceConfig: settings.addConstructionSequence ? activeConstructionSequenceConfig : null,
         });
-      } catch (error) {
-        finishWorker();
-        elements.statusCard.hidden = true;
-        showMainError(error.message || String(error));
-      }
+      });
     }
 
-    function finishWorker() {
+    function stopActiveWorker() {
       if (activeWorker) activeWorker.terminate();
       activeWorker = null;
-      setBusy(false);
     }
 
     function setBusy(busy) {
-      elements.processButton.disabled = busy || !selectedFile || !elements.psetNameInput.value.trim() || !nlsfbReady || (settings.addConstructionSequence && !constructionSequenceReady);
+      isProcessing = busy;
+      elements.processButton.disabled = busy || !selectedFiles.length || !elements.psetNameInput.value.trim() || !nlsfbReady || (settings.addConstructionSequence && !constructionSequenceReady);
       elements.psetNameInput.disabled = busy;
       elements.openSettingsButton.disabled = busy;
       elements.removeFileButton.disabled = busy;
+      elements.ifcFileInput.disabled = busy;
+      elements.dropzone.setAttribute('aria-disabled', busy ? 'true' : 'false');
       elements.processButtonLabel.textContent = busy ? 'Bezig met organiseren' : 'Organiseer IFC';
     }
 
     function updateProgress(percent, message) {
-      const safePercent = Math.max(0, Math.min(100, Number(percent) || 0));
+      const safePercent = Math.round(Math.max(0, Math.min(100, Number(percent) || 0)));
       elements.statusPercent.textContent = `${safePercent}%`;
       elements.progressBar.style.width = `${safePercent}%`;
       elements.statusMessage.textContent = message || '';
     }
 
-    async function showResult(blob, summary, report, targetPsetName) {
+    async function showResult(results, failures, targetPsetName, totalSelectedFiles) {
       revokeOutputUrls();
-      const baseName = selectedFile.name.replace(/\.ifc$/i, '');
-      const safeSuffix = targetPsetName.replace(/[^a-z0-9_]+/gi, '_').replace(/^_+|_+$/g, '') || 'Pset';
-      const outputName = `${baseName}_${safeSuffix}.ifc`;
+      const multipleSelection = totalSelectedFiles > 1;
+      const namedResults = assignUniqueOutputNames(results, targetPsetName);
+      let downloadBlob;
+      let downloadName;
 
-      outputIfcUrl = URL.createObjectURL(blob);
+      if (multipleSelection) {
+        updateProgress(98, 'Downloadbestand maken');
+        downloadBlob = await createStoredZip(namedResults.map((result) => ({
+          name: result.outputName,
+          blob: result.blob,
+        })));
+        downloadName = 'organize-my-ifc-resultaten.zip';
+        elements.resultTitle.textContent = 'Je IFC modellen zijn klaar';
+        elements.downloadButtonLabel.textContent = 'Download ZIP';
+        elements.resultFileDescription.textContent = `${downloadName} · ${namedResults.length.toLocaleString('nl-NL')} IFC bestanden · ${formatBytes(downloadBlob.size)}`;
+      } else {
+        const result = namedResults[0];
+        downloadBlob = result.blob;
+        downloadName = result.outputName;
+        elements.resultTitle.textContent = 'Je IFC is klaar';
+        elements.downloadButtonLabel.textContent = 'Download IFC';
+        elements.resultFileDescription.textContent = `${downloadName} · ${formatBytes(downloadBlob.size)}`;
+      }
 
+      outputIfcUrl = URL.createObjectURL(downloadBlob);
       elements.downloadIfcLink.href = outputIfcUrl;
-      elements.downloadIfcLink.download = outputName;
-      elements.resultFileDescription.textContent = `${outputName} · ${formatBytes(blob.size)}`;
+      elements.downloadIfcLink.download = downloadName;
 
-      const resultParts = [
-        `${formatNumber(summary.processedElements)} elementen georganiseerd`,
-        `${formatNumber(summary.propertiesAdded)} eigenschappen gebundeld`,
-      ];
+      const summary = aggregateSummaries(namedResults.map((result) => result.summary));
+      const resultParts = [];
+      if (multipleSelection) {
+        resultParts.push(`${namedResults.length.toLocaleString('nl-NL')} van ${totalSelectedFiles.toLocaleString('nl-NL')} modellen georganiseerd`);
+      } else {
+        resultParts.push(`${formatNumber(summary.processedElements)} elementen georganiseerd`);
+      }
+      resultParts.push(`${formatNumber(summary.propertiesAdded)} eigenschappen gebundeld`);
       if (Number(summary.sourceClassificationsFound || 0) > 0) {
         resultParts.push(`${formatNumber(summary.sourceClassificationsFound)} NL-SfB koppelingen gevonden`);
       }
@@ -621,16 +722,70 @@
         resultParts.push(`${formatNumber(summary.constructionSequenceAssignments)} bouwvolgordes toegevoegd`);
       }
       elements.resultSummary.textContent = resultParts.join(' · ');
+
+      const report = aggregateReports(namedResults, failures);
       renderWarnings(report, summary);
+      updateProgress(100, 'Gereed');
+      elements.statusCard.hidden = true;
       elements.resultCard.hidden = false;
       elements.resultCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    function assignUniqueOutputNames(results, targetPsetName) {
+      const usedNames = new Set();
+      return results.map((result) => {
+        const baseName = result.sourceFile.name.replace(/\.ifc$/i, '');
+        const safeSuffix = targetPsetName.replace(/[^a-z0-9_]+/gi, '_').replace(/^_+|_+$/g, '') || 'Pset';
+        const preferredName = `${baseName}_${safeSuffix}.ifc`;
+        let outputName = preferredName;
+        let counter = 2;
+        while (usedNames.has(outputName.toLocaleLowerCase('nl-NL'))) {
+          outputName = `${baseName}_${safeSuffix}_${counter}.ifc`;
+          counter += 1;
+        }
+        usedNames.add(outputName.toLocaleLowerCase('nl-NL'));
+        return { ...result, outputName };
+      });
+    }
+
+    function aggregateSummaries(summaries) {
+      const aggregate = {};
+      for (const summary of summaries) {
+        for (const [key, value] of Object.entries(summary || {})) {
+          if (typeof value === 'number' && Number.isFinite(value)) {
+            aggregate[key] = Number(aggregate[key] || 0) + value;
+          }
+        }
+      }
+      return aggregate;
+    }
+
+    function aggregateReports(results, failures) {
+      const report = {
+        warnings: [],
+        unresolvedClassificationCodes: [],
+        batchFailures: Array.isArray(failures) ? failures : [],
+      };
+
+      for (const result of results) {
+        const fileName = result.sourceFile && result.sourceFile.name ? result.sourceFile.name : '';
+        const sourceReport = result.report || {};
+        for (const warning of Array.isArray(sourceReport.warnings) ? sourceReport.warnings : []) {
+          report.warnings.push({ ...warning, fileName });
+        }
+        for (const code of Array.isArray(sourceReport.unresolvedClassificationCodes) ? sourceReport.unresolvedClassificationCodes : []) {
+          report.unresolvedClassificationCodes.push({ code, fileName });
+        }
+      }
+      return report;
     }
 
     function renderWarnings(report, summary) {
       const warnings = Array.isArray(report.warnings) ? report.warnings : [];
       const unresolved = Array.isArray(report.unresolvedClassificationCodes) ? report.unresolvedClassificationCodes : [];
+      const failures = Array.isArray(report.batchFailures) ? report.batchFailures : [];
       const warningCount = Number(summary.warningCount || 0);
-      const hasWarnings = warningCount > 0 || unresolved.length > 0 || Number(summary.sourceDescriptionsMissing || 0) > 0;
+      const hasWarnings = warningCount > 0 || unresolved.length > 0 || failures.length > 0 || Number(summary.sourceDescriptionsMissing || 0) > 0;
 
       elements.warningNotice.hidden = !hasWarnings;
       elements.warningDetails.hidden = !hasWarnings;
@@ -638,22 +793,34 @@
 
       if (!hasWarnings) return;
 
-      const total = warningCount + unresolved.length;
+      const total = warningCount + unresolved.length + failures.length;
+      const noticeText = failures.length
+        ? 'Niet alle bestanden konden worden verwerkt. De beschikbare exports zijn wel gemaakt.'
+        : 'De export is gemaakt, maar controleer de meldingen. Codes zonder match in de NL-SfB JSON krijgen de omschrijving “Onbekende NL-SfB codering”.';
       elements.warningNotice.innerHTML = `
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true"><path d="M12 3 2.8 20h18.4L12 3Z"/><path d="M12 9v5m0 3h.01"/></svg>
-        <span>De export is gemaakt, maar controleer de meldingen. Codes zonder match in de NL-SfB JSON krijgen de omschrijving “Onbekende NL-SfB codering”.</span>
+        <span>${noticeText}</span>
       `;
       elements.warningSummary.textContent = `${total.toLocaleString('nl-NL')} meldingen bekijken`;
 
-      for (const code of unresolved.slice(0, 100)) {
+      for (const failure of failures.slice(0, 100)) {
         const item = document.createElement('li');
-        item.textContent = `Code “${code}” staat niet in de NL-SfB JSON en heeft de omschrijving “Onbekende NL-SfB codering” gekregen.`;
+        item.textContent = `${failure.fileName}: ${failure.message}`;
+        elements.warningList.appendChild(item);
+      }
+
+      for (const entry of unresolved.slice(0, 100)) {
+        const code = typeof entry === 'object' ? entry.code : entry;
+        const fileName = typeof entry === 'object' ? entry.fileName : '';
+        const item = document.createElement('li');
+        item.textContent = `${fileName ? `${fileName}: ` : ''}Code “${code}” staat niet in de NL-SfB JSON en heeft de omschrijving “Onbekende NL-SfB codering” gekregen.`;
         elements.warningList.appendChild(item);
       }
 
       for (const warning of warnings.slice(0, 150)) {
         const item = document.createElement('li');
-        item.textContent = `${warning.expressId ? `#${warning.expressId}: ` : ''}${warning.message}`;
+        const filePrefix = warning.fileName ? `${warning.fileName}: ` : '';
+        item.textContent = `${filePrefix}${warning.expressId ? `#${warning.expressId}: ` : ''}${warning.message}`;
         elements.warningList.appendChild(item);
       }
     }
@@ -670,6 +837,109 @@
     function revokeOutputUrls() {
       if (outputIfcUrl) URL.revokeObjectURL(outputIfcUrl);
       outputIfcUrl = null;
+    }
+
+    async function createStoredZip(entries) {
+      const encoder = new TextEncoder();
+      const crcTable = createCrcTable();
+      const localParts = [];
+      const centralParts = [];
+      let offset = 0;
+      const now = new Date();
+      const dosTime = ((now.getHours() & 31) << 11) | ((now.getMinutes() & 63) << 5) | (Math.floor(now.getSeconds() / 2) & 31);
+      const dosDate = (((Math.max(1980, now.getFullYear()) - 1980) & 127) << 9) | (((now.getMonth() + 1) & 15) << 5) | (now.getDate() & 31);
+
+      for (const entry of entries) {
+        const blob = entry.blob;
+        const size = Number(blob.size || 0);
+        if (size > 0xFFFFFFFF) throw new Error('Een IFC bestand is te groot voor het ZIP formaat van deze app.');
+        const safeName = String(entry.name || 'model.ifc').replace(/[\\/]+/g, '_');
+        const nameBytes = encoder.encode(safeName);
+        const crc = await crc32Blob(blob, crcTable);
+
+        const localHeader = new Uint8Array(30 + nameBytes.length);
+        const localView = new DataView(localHeader.buffer);
+        localView.setUint32(0, 0x04034B50, true);
+        localView.setUint16(4, 20, true);
+        localView.setUint16(6, 0x0800, true);
+        localView.setUint16(8, 0, true);
+        localView.setUint16(10, dosTime, true);
+        localView.setUint16(12, dosDate, true);
+        localView.setUint32(14, crc, true);
+        localView.setUint32(18, size, true);
+        localView.setUint32(22, size, true);
+        localView.setUint16(26, nameBytes.length, true);
+        localView.setUint16(28, 0, true);
+        localHeader.set(nameBytes, 30);
+        localParts.push(localHeader, blob);
+
+        const centralHeader = new Uint8Array(46 + nameBytes.length);
+        const centralView = new DataView(centralHeader.buffer);
+        centralView.setUint32(0, 0x02014B50, true);
+        centralView.setUint16(4, 20, true);
+        centralView.setUint16(6, 20, true);
+        centralView.setUint16(8, 0x0800, true);
+        centralView.setUint16(10, 0, true);
+        centralView.setUint16(12, dosTime, true);
+        centralView.setUint16(14, dosDate, true);
+        centralView.setUint32(16, crc, true);
+        centralView.setUint32(20, size, true);
+        centralView.setUint32(24, size, true);
+        centralView.setUint16(28, nameBytes.length, true);
+        centralView.setUint16(30, 0, true);
+        centralView.setUint16(32, 0, true);
+        centralView.setUint16(34, 0, true);
+        centralView.setUint16(36, 0, true);
+        centralView.setUint32(38, 0, true);
+        centralView.setUint32(42, offset, true);
+        centralHeader.set(nameBytes, 46);
+        centralParts.push(centralHeader);
+
+        offset += localHeader.length + size;
+      }
+
+      const centralOffset = offset;
+      const centralSize = centralParts.reduce((sum, part) => sum + part.length, 0);
+      const endRecord = new Uint8Array(22);
+      const endView = new DataView(endRecord.buffer);
+      endView.setUint32(0, 0x06054B50, true);
+      endView.setUint16(4, 0, true);
+      endView.setUint16(6, 0, true);
+      endView.setUint16(8, entries.length, true);
+      endView.setUint16(10, entries.length, true);
+      endView.setUint32(12, centralSize, true);
+      endView.setUint32(16, centralOffset, true);
+      endView.setUint16(20, 0, true);
+
+      return new Blob([...localParts, ...centralParts, endRecord], { type: 'application/zip' });
+    }
+
+    function createCrcTable() {
+      const table = new Uint32Array(256);
+      for (let index = 0; index < 256; index += 1) {
+        let value = index;
+        for (let bit = 0; bit < 8; bit += 1) {
+          value = (value >>> 1) ^ ((value & 1) ? 0xEDB88320 : 0);
+        }
+        table[index] = value >>> 0;
+      }
+      return table;
+    }
+
+    async function crc32Blob(blob, table) {
+      let crc = 0xFFFFFFFF;
+      if (blob.stream && typeof blob.stream === 'function') {
+        const reader = blob.stream().getReader();
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          for (const byte of value) crc = (crc >>> 8) ^ table[(crc ^ byte) & 0xFF];
+        }
+      } else {
+        const bytes = new Uint8Array(await blob.arrayBuffer());
+        for (const byte of bytes) crc = (crc >>> 8) ^ table[(crc ^ byte) & 0xFF];
+      }
+      return (crc ^ 0xFFFFFFFF) >>> 0;
     }
 
     function parseJsonTolerant(text) {

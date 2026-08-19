@@ -1,6 +1,6 @@
 # Organize my IFC
 
-Een statische webapp die aanwezige IFC informatie bundelt in één nieuw eigenschappen tabje. De verwerking gebeurt volledig in de browser.
+Een statische webapp die aanwezige IFC informatie bundelt in één nieuw eigenschappen tabje. Eén of meer IFC modellen kunnen in dezelfde verwerking worden geselecteerd. De verwerking gebeurt volledig in de browser.
 
 ## Direct op GitHub Pages plaatsen
 
@@ -10,6 +10,28 @@ Een statische webapp die aanwezige IFC informatie bundelt in één nieuw eigensc
 4. Open daarna de door GitHub Pages aangemaakte website.
 
 Er is geen build stap, package manager of servercode nodig.
+
+## Meerdere IFC modellen
+
+Via het uploadvlak kunnen één of meer `.ifc` bestanden tegelijk worden gekozen of gesleept. De modellen worden achter elkaar en volledig lokaal verwerkt.
+
+Bij één model wordt een nieuw IFC bestand aangeboden. Bij meerdere modellen maakt de app één ZIP bestand met daarin voor ieder bronmodel een afzonderlijk georganiseerd IFC bestand. Modellen worden niet samengevoegd. Hierdoor blijven de oorspronkelijke modelgrenzen, disciplines en bestandsnamen herkenbaar.
+
+Wanneer één bestand uit een selectie niet kan worden verwerkt, gaat de app verder met de overige bestanden. De beschikbare resultaten worden alsnog in het ZIP bestand geplaatst en de mislukte bestandsnaam wordt in de meldingen genoemd.
+
+## Verwerkingsinformatie in het IFC model
+
+Aan het aanwezige `IfcProject` wordt het gebruikersgedefinieerde PropertySet `Cpset_OrganizeMyIFC` gekoppeld. Dit PropertySet bevat:
+
+1. `Applicatie`
+2. `Versie`
+3. `Verwerkt op`
+4. `Bronbestand`
+5. `Bewerkingen`
+
+`Bewerkingen` bevat een korte samenvatting van de werkelijk uitgevoerde onderdelen, bijvoorbeeld het bundelen van eigenschappen, het harmoniseren van NL-SfB en het toevoegen van bouwvolgorde. De bestaande exporteur, auteur en oorspronkelijke `IfcOwnerHistory` worden niet overschreven.
+
+Wanneer een model opnieuw door de app wordt verwerkt, wordt het bestaande `Cpset_OrganizeMyIFC` bijgewerkt in plaats van nog een gelijknamig PropertySet toe te voegen.
 
 ## NL-SfB bijwerken
 

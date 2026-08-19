@@ -110,10 +110,13 @@ h1, h2, p { margin-top: 0; }
 .dropzone-icon svg { width: 26px; height: 26px; }
 .dropzone-title { margin-bottom: 4px; font-weight: 800; }
 .dropzone-copy { margin: 0; color: var(--muted); font-size: 14px; }
-.selected-file { display: flex; width: 100%; max-width: 560px; align-items: center; justify-content: space-between; gap: 16px; border: 1px solid #bad8d1; border-radius: 12px 12px 12px 4px; background: #fff; padding: 14px 15px; text-align: left; }
-.selected-file-main { min-width: 0; }
+.selected-file { display: flex; width: 100%; max-width: 620px; align-items: flex-start; justify-content: space-between; gap: 16px; border: 1px solid #bad8d1; border-radius: 12px 12px 12px 4px; background: #fff; padding: 14px 15px; text-align: left; }
+.selected-file-main { min-width: 0; flex: 1 1 auto; }
 .selected-file-name { overflow: hidden; font-weight: 780; text-overflow: ellipsis; white-space: nowrap; }
 .selected-file-meta { color: var(--muted); font-size: 12px; }
+.selected-file-list { display: grid; gap: 3px; max-height: 116px; overflow: auto; margin: 9px 0 0; padding: 0; list-style: none; color: var(--muted); font-size: 12px; }
+.selected-file-list li { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.selected-file-list li::before { content: "•"; margin-right: 7px; color: var(--accent); }
 
 .form-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 14px; align-items: end; margin-top: 22px; }
 .field { display: grid; gap: 7px; }
@@ -206,6 +209,8 @@ summary { cursor: pointer; color: var(--muted); font-size: 13px; font-weight: 70
   .form-row { grid-template-columns: 1fr; }
   .form-row .button { width: 100%; }
   .result-header, .section-heading { align-items: stretch; flex-direction: column; }
+  .selected-file { align-items: stretch; flex-direction: column; }
+  .selected-file .button { width: 100%; }
   .attribute-row, .property-mapping-row, .classification-alias-row { grid-template-columns: 1fr; }
   .remove-mapping-button { width: 100%; }
   .settings-footer { align-items: stretch; flex-direction: column; }

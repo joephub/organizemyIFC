@@ -40,7 +40,7 @@
           <div class="hero-copy">
             <span class="eyebrow">IFC informatie op één plek</span>
             <h1>Breng je IFC model op orde</h1>
-            <p>Kies een IFC bestand. De app zet alleen de informatie die al aanwezig is overzichtelijk bij elkaar.</p>
+            <p>Kies één of meer IFC bestanden. De app zet alleen de informatie die al aanwezig is overzichtelijk bij elkaar.</p>
           </div>
 
           <figure class="flow-visual" aria-labelledby="flowVisualTitle flowVisualDescription">
@@ -114,7 +114,7 @@
         </div>
 
         <div class="card main-card">
-          <input class="sr-only" id="ifcFileInput" type="file" accept=".ifc,application/x-step">
+          <input class="sr-only" id="ifcFileInput" type="file" accept=".ifc,application/x-step" multiple>
           <div class="dropzone" id="dropzone" role="button" tabindex="0" aria-describedby="dropzoneDescription">
             <div id="emptyFileState">
               <div class="dropzone-icon" aria-hidden="true">
@@ -123,13 +123,14 @@
                   <path d="M5 14v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"/>
                 </svg>
               </div>
-              <div class="dropzone-title">Sleep je IFC hierheen</div>
-              <p class="dropzone-copy" id="dropzoneDescription">of klik om een bestand te kiezen</p>
+              <div class="dropzone-title">Sleep je IFC bestanden hierheen</div>
+              <p class="dropzone-copy" id="dropzoneDescription">of klik om één of meer bestanden te kiezen</p>
             </div>
             <div class="selected-file" id="selectedFileState" hidden>
               <div class="selected-file-main">
                 <div class="selected-file-name" id="selectedFileName"></div>
                 <div class="selected-file-meta" id="selectedFileMeta"></div>
+                <ul class="selected-file-list" id="selectedFileList"></ul>
               </div>
               <button class="button button-quiet" id="removeFileButton" type="button">Verwijderen</button>
             </div>
@@ -173,7 +174,7 @@
         <div class="card result-card" id="resultCard" hidden>
           <div class="result-header">
             <div>
-              <h2>Je IFC is klaar</h2>
+              <h2 id="resultTitle">Je IFC is klaar</h2>
               <p id="resultFileDescription"></p>
             </div>
             <span class="ready-mark" aria-hidden="true">
@@ -186,7 +187,7 @@
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true">
                 <path d="M12 3v12m0 0-4-4m4 4 4-4"/><path d="M5 20h14"/>
               </svg>
-              Download IFC
+              <span id="downloadButtonLabel">Download IFC</span>
             </a>
           </div>
           <div class="notice notice-warning" id="warningNotice" hidden></div>
