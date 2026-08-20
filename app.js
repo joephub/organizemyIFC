@@ -41,6 +41,8 @@
       mainView: document.getElementById('mainView'),
       settingsView: document.getElementById('settingsView'),
       openSettingsButton: document.getElementById('openSettingsButton'),
+      homeConstructionSequenceInfoButton: document.getElementById('homeConstructionSequenceInfoButton'),
+      homeConstructionSequenceSettingsButton: document.getElementById('homeConstructionSequenceSettingsButton'),
       backButton: document.getElementById('backButton'),
       restoreSettingsButton: document.getElementById('restoreSettingsButton'),
       attributeList: document.getElementById('attributeList'),
@@ -96,6 +98,7 @@
     let activeConstructionSequenceConfig = null;
     let constructionSequenceReady = false;
     let constructionSequenceLoadError = null;
+    let constructionSequenceInfoTrigger = null;
     let settings = loadSettings();
 
     initialize();
@@ -133,6 +136,14 @@
       elements.openSettingsButton.addEventListener('click', () => {
         renderSettings(settings);
         showView('settings');
+      });
+      elements.homeConstructionSequenceInfoButton.addEventListener('click', openConstructionSequenceInfo);
+      elements.homeConstructionSequenceSettingsButton.addEventListener('click', () => {
+        renderSettings(settings);
+        showView('settings');
+        requestAnimationFrame(() => {
+          document.querySelector('.settings-card-build')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        });
       });
 
       elements.backButton.addEventListener('click', () => {
@@ -174,7 +185,7 @@
         if (event.target === elements.constructionSequenceInfoDialog) closeConstructionSequenceInfo();
       });
       elements.constructionSequenceInfoDialog.addEventListener('close', () => {
-        elements.constructionSequenceInfoButton.focus();
+        focusConstructionSequenceInfoTrigger();
       });
       elements.constructionSequencePhaseToggle.addEventListener('click', () => {
         setConstructionSequencePhaseCatalogOpen(elements.constructionSequencePhaseCatalog.hidden, true);
@@ -237,7 +248,10 @@
 
     }
 
-    function openConstructionSequenceInfo() {
+    function openConstructionSequenceInfo(event) {
+      constructionSequenceInfoTrigger = event?.currentTarget instanceof HTMLElement
+        ? event.currentTarget
+        : document.activeElement instanceof HTMLElement ? document.activeElement : null;
       if (activeConstructionSequenceConfig) {
         renderConstructionSequenceOverview(activeConstructionSequenceConfig);
       } else if (constructionSequenceLoadError) {
@@ -378,8 +392,16 @@
       if (typeof dialog.close === 'function' && dialog.open) dialog.close();
       else {
         dialog.removeAttribute('open');
-        elements.constructionSequenceInfoButton.focus();
+        focusConstructionSequenceInfoTrigger();
       }
+    }
+
+    function focusConstructionSequenceInfoTrigger() {
+      const trigger = constructionSequenceInfoTrigger;
+      constructionSequenceInfoTrigger = null;
+      if (!(trigger instanceof HTMLElement) || !trigger.isConnected) return;
+      if (trigger.closest('[hidden]')) return;
+      trigger.focus();
     }
 
     function showView(view) {

@@ -196,6 +196,104 @@
             <ul class="warning-list" id="warningList"></ul>
           </details>
         </div>
+
+        <section class="sequence-feature" aria-labelledby="homeSequenceTitle">
+          <figure class="build-animation-card">
+            <svg class="build-animation" viewBox="0 0 520 360" role="img" aria-labelledby="buildAnimationTitle buildAnimationDescription">
+              <title id="buildAnimationTitle">Een gebouw wordt stap voor stap opgebouwd</title>
+              <desc id="buildAnimationDescription">Fundering, vloer, constructie, gevel, kozijn en dak vallen achtereenvolgens op hun plek.</desc>
+              <defs>
+                <linearGradient id="foundationFill" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0" stop-color="#dfe9e5"/>
+                  <stop offset="1" stop-color="#c5d6d0"/>
+                </linearGradient>
+                <linearGradient id="roofFill" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0" stop-color="#0b7a6d"/>
+                  <stop offset="1" stop-color="#075e54"/>
+                </linearGradient>
+                <filter id="buildSoftShadow" x="-30%" y="-30%" width="160%" height="170%">
+                  <feDropShadow dx="0" dy="10" stdDeviation="8" flood-color="#173a34" flood-opacity="0.15"/>
+                </filter>
+              </defs>
+
+              <g class="build-scene" filter="url(#buildSoftShadow)">
+                <ellipse class="build-ground-shadow" cx="260" cy="319" rx="164" ry="18"/>
+
+                <g class="build-part build-part-foundation">
+                  <path class="build-foundation-side" d="M112 284 408 284 374 323 146 323Z"/>
+                  <path class="build-foundation-top" d="M112 276 408 276 374 307 146 307Z"/>
+                  <path class="build-outline" d="M112 276 408 276 374 307 146 307 112 276Z"/>
+                </g>
+
+                <g class="build-part build-part-floor">
+                  <path class="build-floor-side" d="M145 247 375 247 352 276 168 276Z"/>
+                  <path class="build-floor-top" d="M145 239 375 239 352 263 168 263Z"/>
+                  <path class="build-outline" d="M145 239 375 239 352 263 168 263 145 239Z"/>
+                </g>
+
+                <g class="build-part build-part-structure">
+                  <path class="build-structure-line" d="M167 239V139M352 239V139M214 239V139M306 239V139"/>
+                  <path class="build-structure-line build-structure-beam" d="M158 145H361M158 190H361M168 239H352"/>
+                  <path class="build-structure-brace" d="m168 239 46-49m0 49-46-49m138 49 46-49m0 49-46-49"/>
+                </g>
+
+                <g class="build-part build-part-facade">
+                  <rect class="build-facade-panel" x="157" y="145" width="204" height="96" rx="4"/>
+                  <rect class="build-window-opening" x="228" y="174" width="64" height="54" rx="2"/>
+                  <path class="build-facade-seam" d="M157 190h71M292 190h69"/>
+                </g>
+
+                <g class="build-part build-part-window">
+                  <rect class="build-window-frame" x="232" y="178" width="56" height="46" rx="2"/>
+                  <path class="build-window-frame" d="M260 178v46M232 201h56"/>
+                  <rect class="build-window-glass" x="236" y="182" width="20" height="15" rx="1"/>
+                  <rect class="build-window-glass" x="264" y="182" width="20" height="15" rx="1"/>
+                  <rect class="build-window-glass" x="236" y="205" width="20" height="15" rx="1"/>
+                  <rect class="build-window-glass" x="264" y="205" width="20" height="15" rx="1"/>
+                </g>
+
+                <g class="build-part build-part-roof">
+                  <path class="build-roof-side" d="M119 146 260 60 401 146 377 166 260 96 143 166Z"/>
+                  <path class="build-roof-top" d="M119 136 260 50 401 136 377 155 260 85 143 155Z"/>
+                  <path class="build-roof-ridge" d="m119 136 141-86 141 86M260 50v35"/>
+                </g>
+              </g>
+
+              <g class="build-code-badge" aria-hidden="true">
+                <rect x="319" y="24" width="169" height="61" rx="12"/>
+                <text x="335" y="46" class="build-code-label">Bouwvolgorde</text>
+                <text x="335" y="69" class="build-code-value">09.003800.10</text>
+              </g>
+
+              <g class="build-stage-line" aria-hidden="true">
+                <path d="M76 336H444"/>
+                <circle class="build-stage-dot build-stage-dot-1" cx="76" cy="336" r="5"/>
+                <circle class="build-stage-dot build-stage-dot-2" cx="150" cy="336" r="5"/>
+                <circle class="build-stage-dot build-stage-dot-3" cx="224" cy="336" r="5"/>
+                <circle class="build-stage-dot build-stage-dot-4" cx="298" cy="336" r="5"/>
+                <circle class="build-stage-dot build-stage-dot-5" cx="372" cy="336" r="5"/>
+                <circle class="build-stage-dot build-stage-dot-6" cx="444" cy="336" r="5"/>
+              </g>
+            </svg>
+            <figcaption>Fundering · vloer · constructie · gevel · kozijn · dak</figcaption>
+          </figure>
+
+          <div class="sequence-feature-copy">
+            <span class="eyebrow">Bouwvolgorde</span>
+            <h2 id="homeSequenceTitle">Verrijk je model met een bouwvolgorde</h2>
+            <p>De app combineert NL-SfB Tabel 1 met de Z hoogte van de bouwlaag en voegt per element een code en omschrijving toe.</p>
+            <p class="sequence-feature-note">
+              Zet de bouwvolgorde aan bij
+              <button class="text-button" id="homeConstructionSequenceSettingsButton" type="button">Geavanceerde instellingen</button>.
+            </p>
+            <button class="button button-secondary sequence-feature-button" id="homeConstructionSequenceInfoButton" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true">
+                <circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5h.01"/>
+              </svg>
+              Meer informatie
+            </button>
+          </div>
+        </section>
       </section>
 
       <section id="settingsView" hidden>

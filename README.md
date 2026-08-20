@@ -48,6 +48,19 @@ De meegeleverde bron is één op één gekopieerd. De parser accepteert ook de a
 - `nlsfb2021.json`: officiële NL-SfB namen en codes
 - `bouwvolgorde_nlsfb.json`: vaste bouwvolgorde per NL-SfB code en bouwlaag
 
+## Bouwvolgorde op het hoofdscherm
+
+Onder het uploadvlak staat een tweede onderdeel met een herhalende animatie. De animatie bouwt een eenvoudig huis op in deze volgorde:
+
+1. Fundering
+2. Vloer
+3. Constructie
+4. Gevel
+5. Kozijn
+6. Dak
+
+De kaart staat op brede schermen links uitgelijnd met de titel `Breng je IFC model op orde`. De tekst ernaast bevat een rechtstreekse koppeling naar het onderdeel Bouwvolgorde in Geavanceerde instellingen. De knop `Meer informatie` opent direct de bestaande uitleg over de berekening van de bouwvolgorde. Bij een systeeminstelling voor minder beweging wordt de complete woning zonder animatie getoond.
+
 ## Gebruik
 
 De site moet via GitHub Pages of een andere webserver worden geopend. Rechtstreeks dubbelklikken op `index.html` kan het laden van `nlsfb2021.json` blokkeren door browserbeveiliging.
