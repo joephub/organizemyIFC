@@ -249,8 +249,14 @@
 
           <section class="card settings-card build-sequence-settings settings-card-build">
             <div class="section-heading section-heading-compact">
-              <div>
+              <div class="section-title-with-info">
                 <h2>Bouwvolgorde</h2>
+                <button class="info-icon-button" id="constructionSequenceInfoButton" type="button" aria-label="Uitleg over de bouwvolgorde" aria-haspopup="dialog" aria-controls="constructionSequenceInfoDialog">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <circle cx="12" cy="12" r="9"/>
+                    <path d="M12 10.5v6M12 7.5h.01" stroke-linecap="round"/>
+                  </svg>
+                </button>
               </div>
             </div>
             <label class="toggle-setting" for="addConstructionSequenceInput">
@@ -276,5 +282,94 @@
       </section>
     </main>
   </div>
+
+  <dialog class="sequence-info-dialog" id="constructionSequenceInfoDialog" aria-labelledby="constructionSequenceInfoTitle" aria-describedby="constructionSequenceInfoDescription">
+    <div class="sequence-dialog-shell">
+      <div class="sequence-dialog-head">
+        <div>
+          <span class="sequence-dialog-kicker">Bouwvolgorde</span>
+          <h2 id="constructionSequenceInfoTitle">Zo ontstaat de code</h2>
+          <p id="constructionSequenceInfoDescription">Voegt een code en omschrijving toe aan jouw eigenschappen tabje én als classificatie.</p>
+        </div>
+        <button class="dialog-close-button" id="closeConstructionSequenceInfoButton" type="button" aria-label="Sluiten">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
+        </button>
+      </div>
+
+      <div class="sequence-formula" role="img" aria-label="NL-SfB code 22.13 en bouwlaaghoogte 3800 millimeter worden gecombineerd tot bouwvolgordecode 09.003800.10">
+        <div class="sequence-source-card sequence-source-nlsfb">
+          <svg class="sequence-card-illustration" viewBox="0 0 88 66" fill="none" aria-hidden="true">
+            <path d="M17 24 42 11l26 14-26 14-25-15Z"/>
+            <path d="M17 24v25l25 14V39L17 24Z"/>
+            <path d="M42 39v24l26-14V25L42 39Z"/>
+            <path d="M51 18h25v16H51z" class="sequence-tag-shape"/>
+            <path d="M55 23h17M55 28h11" class="sequence-tag-line"/>
+          </svg>
+          <span class="sequence-mini-label">NL-SfB Tabel 1</span>
+          <strong>22.13</strong>
+          <span>bepaalt fase en stap</span>
+        </div>
+
+        <span class="sequence-operator" aria-hidden="true">+</span>
+
+        <div class="sequence-source-card sequence-source-level">
+          <svg class="sequence-card-illustration" viewBox="0 0 88 66" fill="none" aria-hidden="true">
+            <path d="M18 58V10h48v48M18 24h48M18 40h48M18 58h48"/>
+            <path d="M10 40h67" class="sequence-level-highlight"/>
+            <circle cx="74" cy="40" r="4" class="sequence-level-dot"/>
+          </svg>
+          <span class="sequence-mini-label">Z bouwlaag</span>
+          <strong>3.800 mm</strong>
+          <span>wordt 003800</span>
+        </div>
+
+        <span class="sequence-operator sequence-arrow" aria-hidden="true">→</span>
+
+        <div class="sequence-result-card">
+          <span class="sequence-mini-label">Bouwvolgorde</span>
+          <strong>09.003800.10</strong>
+          <span>Vaste systeemwanden</span>
+        </div>
+      </div>
+
+      <div class="sequence-code-key" aria-label="Opbouw van de bouwvolgordecode">
+        <div><strong>09</strong><span>fase</span></div>
+        <div><strong>003800</strong><span>Z in mm</span></div>
+        <div><strong>10</strong><span>stap</span></div>
+      </div>
+
+      <div class="sequence-order-example">
+        <span class="sequence-example-label">Voorbeeld op 3.800 mm</span>
+        <div class="sequence-order-list">
+          <div class="sequence-order-item"><span>02.003800.00</span><strong>Vloerconstructie</strong></div>
+          <div class="sequence-order-item"><span>05.003800.10</span><strong>Massieve binnenwanden</strong></div>
+          <div class="sequence-order-item"><span>08.003800.10</span><strong>Vloerafwerklagen</strong></div>
+          <div class="sequence-order-item is-emphasized"><span>09.003800.10</span><strong>Vaste systeemwanden</strong></div>
+          <div class="sequence-order-item"><span>11.003800.10</span><strong>Definitieve vloerafwerkingen</strong></div>
+        </div>
+      </div>
+
+      <section class="sequence-phase-catalog" aria-labelledby="constructionSequencePhaseCatalogTitle">
+        <div class="sequence-catalog-head">
+          <div>
+            <span class="sequence-dialog-kicker">Volledige indeling</span>
+            <h3 id="constructionSequencePhaseCatalogTitle">Alle fasen en stappen</h3>
+            <p><span id="constructionSequenceOverviewCount">Bouwvolgorde laden…</span> · rechtstreeks uit <code>bouwvolgorde_nlsfb.json</code></p>
+          </div>
+          <div class="sequence-catalog-actions" aria-label="Fasen uitklappen of inklappen">
+            <button class="sequence-catalog-action" id="expandConstructionSequencePhasesButton" type="button">Alles openen</button>
+            <button class="sequence-catalog-action" id="collapseConstructionSequencePhasesButton" type="button">Alles sluiten</button>
+          </div>
+        </div>
+
+        <nav class="sequence-phase-rail" id="constructionSequencePhaseRail" aria-label="Planningfasen"></nav>
+        <div class="sequence-phase-list" id="constructionSequencePhaseList" aria-live="polite">
+          <p class="sequence-overview-loading">Bouwvolgorde laden…</p>
+        </div>
+      </section>
+
+      <p class="sequence-dialog-note"><strong>Alleen</strong> NL-SfB Tabel 1 en de Z hoogte worden gebruikt. Geen of onbekende code krijgt <strong>XX</strong>. Geen vaste regel krijgt <strong>NM</strong>.</p>
+    </div>
+  </dialog>
 </body>
 </html>

@@ -102,9 +102,11 @@ Objecten met een ontbrekende NL-SfB code en objecten met een code die niet in `n
 
 - code `XX`
 - omschrijving `Geen of onbekende NL-SfB codering`
+
 ## Bouwvolgorde
 
-In de geavanceerde instellingen staat de optie `Voeg bouwvolgorde toe`. Deze optie staat standaard uit.
+In de geavanceerde instellingen staat de optie `Voeg bouwvolgorde toe`. Deze optie staat standaard uit. Naast de titel staat een informatieknop. Die opent een visuele uitleg waarin de NL-SfB code en de Z hoogte worden samengevoegd tot één bouwvolgordecode. Het venster toont daarnaast alle actuele fases en stappen uit `bouwvolgorde_nlsfb.json`, inclusief het fase- en stapdeel van de code, de gekoppelde NL-SfB codes en de gebruikte bouwlaagselectie. De fases kunnen afzonderlijk of allemaal tegelijk worden geopend en gesloten. Wanneer de JSON wordt aangepast, verandert dit overzicht automatisch mee. De uitleg vermeldt ook dat code en omschrijving in het eigenschappen tabje en in de classificatie `Bouwvolgorde` worden geplaatst.
+
 
 Wanneer de optie aan staat, krijgen geometrische IFC objecten twee extra eigenschappen in het gekozen eigenschappen tabje:
 

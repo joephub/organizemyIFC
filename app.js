@@ -49,6 +49,14 @@
       classificationAliasList: document.getElementById('classificationAliasList'),
       addClassificationAliasButton: document.getElementById('addClassificationAliasButton'),
       addConstructionSequenceInput: document.getElementById('addConstructionSequenceInput'),
+      constructionSequenceInfoButton: document.getElementById('constructionSequenceInfoButton'),
+      constructionSequenceInfoDialog: document.getElementById('constructionSequenceInfoDialog'),
+      closeConstructionSequenceInfoButton: document.getElementById('closeConstructionSequenceInfoButton'),
+      constructionSequenceOverviewCount: document.getElementById('constructionSequenceOverviewCount'),
+      constructionSequencePhaseRail: document.getElementById('constructionSequencePhaseRail'),
+      constructionSequencePhaseList: document.getElementById('constructionSequencePhaseList'),
+      expandConstructionSequencePhasesButton: document.getElementById('expandConstructionSequencePhasesButton'),
+      collapseConstructionSequencePhasesButton: document.getElementById('collapseConstructionSequencePhasesButton'),
       ifcFileInput: document.getElementById('ifcFileInput'),
       dropzone: document.getElementById('dropzone'),
       emptyFileState: document.getElementById('emptyFileState'),
@@ -111,8 +119,10 @@
       try {
         activeConstructionSequenceConfig = await loadConstructionSequenceConfig();
         constructionSequenceReady = true;
+        renderConstructionSequenceOverview(activeConstructionSequenceConfig);
       } catch (error) {
         constructionSequenceLoadError = error;
+        renderConstructionSequenceOverviewError(error);
         console.error(error);
       }
 
@@ -158,6 +168,28 @@
         syncSettingsFromForm();
         updateConstructionSequenceAvailability();
         updateProcessButton();
+      });
+      elements.constructionSequenceInfoButton.addEventListener('click', openConstructionSequenceInfo);
+      elements.closeConstructionSequenceInfoButton.addEventListener('click', closeConstructionSequenceInfo);
+      elements.constructionSequenceInfoDialog.addEventListener('click', (event) => {
+        if (event.target === elements.constructionSequenceInfoDialog) closeConstructionSequenceInfo();
+      });
+      elements.constructionSequenceInfoDialog.addEventListener('close', () => {
+        elements.constructionSequenceInfoButton.focus();
+      });
+      elements.expandConstructionSequencePhasesButton.addEventListener('click', () => {
+        setConstructionSequencePhasesOpen(true);
+      });
+      elements.collapseConstructionSequencePhasesButton.addEventListener('click', () => {
+        setConstructionSequencePhasesOpen(false);
+      });
+      elements.constructionSequencePhaseRail.addEventListener('click', (event) => {
+        const button = event.target.closest('[data-sequence-phase-target]');
+        if (!button) return;
+        const target = document.getElementById(button.dataset.sequencePhaseTarget || '');
+        if (!target) return;
+        target.open = true;
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
       });
 
       elements.ifcFileInput.addEventListener('change', () => {
@@ -208,6 +240,144 @@
         updateProcessButton();
       });
 
+    }
+
+    function openConstructionSequenceInfo() {
+      if (activeConstructionSequenceConfig) {
+        renderConstructionSequenceOverview(activeConstructionSequenceConfig);
+      } else if (constructionSequenceLoadError) {
+        renderConstructionSequenceOverviewError(constructionSequenceLoadError);
+      }
+      const dialog = elements.constructionSequenceInfoDialog;
+      if (typeof dialog.showModal === 'function') {
+        if (!dialog.open) dialog.showModal();
+      } else {
+        dialog.setAttribute('open', '');
+      }
+      dialog.scrollTop = 0;
+    }
+
+    function renderConstructionSequenceOverview(config) {
+      const phases = Array.isArray(config && config.fases)
+        ? [...config.fases].sort((left, right) => Number(left.fase_id) - Number(right.fase_id))
+        : [];
+
+      if (!phases.length) {
+        elements.constructionSequenceOverviewCount.textContent = 'Geen fasen gevonden';
+        elements.constructionSequencePhaseRail.innerHTML = '';
+        elements.constructionSequencePhaseList.innerHTML = '<p class="sequence-overview-loading">Geen fasen gevonden in bouwvolgorde_nlsfb.json.</p>';
+        return;
+      }
+
+      const sequenceSettings = config.instellingen || {};
+      const phaseWidth = Math.max(1, Number(sequenceSettings.fase_breedte) || 2);
+      const stepWidth = Math.max(1, Number(sequenceSettings.stap_breedte) || 2);
+      const zWidth = Math.max(1, Number(sequenceSettings.bouwlaag_z_breedte) || 6);
+      const codeFormat = String(sequenceSettings.code_formaat || '{fase}.{bouwlaag_z}.{stap}');
+      const zPlaceholder = 'Z'.repeat(Math.min(zWidth, 12));
+      const totalSteps = phases.reduce((total, phase) => total + (Array.isArray(phase.stappen) ? phase.stappen.length : 0), 0);
+
+      elements.constructionSequenceOverviewCount.textContent = `${phases.length} ${phases.length === 1 ? 'fase' : 'fasen'} · ${totalSteps} ${totalSteps === 1 ? 'stap' : 'stappen'}`;
+      elements.constructionSequencePhaseRail.innerHTML = phases.map((phase, index) => {
+        const phaseNumber = padSequenceNumber(phase.fase_id, phaseWidth);
+        const targetId = `construction-sequence-phase-${index + 1}`;
+        return `
+          <button class="sequence-phase-rail-item" type="button" data-sequence-phase-target="${targetId}" title="${escapeHtml(String(phase.fase_naam || ''))}">
+            <span>${escapeHtml(phaseNumber)}</span>
+            <strong>${escapeHtml(String(phase.fase_naam || `Fase ${phaseNumber}`))}</strong>
+          </button>`;
+      }).join('');
+
+      elements.constructionSequencePhaseList.innerHTML = phases.map((phase, index) => {
+        const phaseNumber = padSequenceNumber(phase.fase_id, phaseWidth);
+        const phaseName = String(phase.fase_naam || `Fase ${phaseNumber}`);
+        const phaseIndication = String(phase.bouwlaag_indicatie || '');
+        const steps = Array.isArray(phase.stappen)
+          ? [...phase.stappen].sort((left, right) => Number(left.volgorde_nummer) - Number(right.volgorde_nummer))
+          : [];
+        const targetId = `construction-sequence-phase-${index + 1}`;
+
+        const stepItems = steps.map((step) => {
+          const stepNumber = padSequenceNumber(step.volgorde_nummer, stepWidth);
+          const codePattern = codeFormat
+            .replaceAll('{fase}', phaseNumber)
+            .replaceAll('{bouwlaag_z}', zPlaceholder)
+            .replaceAll('{stap}', stepNumber);
+          const codes = Array.isArray(step.nlsfb_codes) ? step.nlsfb_codes.map((code) => String(code)) : [];
+          const codeChips = codes.length
+            ? codes.map((code) => `<span class="sequence-nlsfb-chip">${escapeHtml(code)}</span>`).join('')
+            : '<span class="sequence-nlsfb-chip is-empty">Geen code</span>';
+          const scope = constructionSequenceScopeLabel(step.bouwlaag_selectie);
+          return `
+            <li class="sequence-step-item">
+              <code class="sequence-step-code">${escapeHtml(codePattern)}</code>
+              <div class="sequence-step-content">
+                <strong>${escapeHtml(String(step.omschrijving || 'Naamloze stap'))}</strong>
+                <div class="sequence-step-meta">
+                  <span class="sequence-step-codes" aria-label="NL-SfB codes">${codeChips}</span>
+                  <span class="sequence-step-scope">${escapeHtml(scope)}</span>
+                </div>
+              </div>
+            </li>`;
+        }).join('');
+
+        return `
+          <details class="sequence-phase-detail" id="${targetId}" data-sequence-phase-detail open>
+            <summary>
+              <span class="sequence-phase-number">${escapeHtml(phaseNumber)}</span>
+              <span class="sequence-phase-summary-text">
+                <strong>${escapeHtml(phaseName)}</strong>
+                <small>${escapeHtml(phaseIndication)}</small>
+              </span>
+              <span class="sequence-phase-step-count">${steps.length} ${steps.length === 1 ? 'stap' : 'stappen'}</span>
+              <svg class="sequence-phase-chevron" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m5 7.5 5 5 5-5"/></svg>
+            </summary>
+            <ol class="sequence-step-list">${stepItems}</ol>
+          </details>`;
+      }).join('');
+    }
+
+    function renderConstructionSequenceOverviewError(error) {
+      elements.constructionSequenceOverviewCount.textContent = 'Niet beschikbaar';
+      elements.constructionSequencePhaseRail.replaceChildren();
+      elements.constructionSequencePhaseList.replaceChildren();
+      const state = document.createElement('p');
+      state.className = 'sequence-overview-loading is-error';
+      state.textContent = 'Het overzicht kon niet uit bouwvolgorde_nlsfb.json worden geladen.';
+      if (error && error.message) state.title = String(error.message);
+      elements.constructionSequencePhaseList.append(state);
+    }
+
+    function setConstructionSequencePhasesOpen(open) {
+      elements.constructionSequencePhaseList.querySelectorAll('[data-sequence-phase-detail]').forEach((detail) => {
+        detail.open = open;
+      });
+    }
+
+    function constructionSequenceScopeLabel(value) {
+      const labels = {
+        laagste: 'Laagste bouwlaag',
+        hoogste: 'Hoogste bouwlaag',
+        per_bouwlaag: 'Per bouwlaag',
+        vanaf_tweede: 'Vanaf tweede bouwlaag',
+      };
+      const key = String(value || '').trim();
+      return labels[key] || key.replace(/_/g, ' ') || 'Per bouwlaag';
+    }
+
+    function padSequenceNumber(value, width) {
+      const numeric = Number(value);
+      const normalized = Number.isFinite(numeric) ? Math.round(numeric) : 0;
+      return String(normalized).padStart(width, '0');
+    }
+
+    function closeConstructionSequenceInfo() {
+      const dialog = elements.constructionSequenceInfoDialog;
+      if (typeof dialog.close === 'function' && dialog.open) dialog.close();
+      else {
+        dialog.removeAttribute('open');
+        elements.constructionSequenceInfoButton.focus();
+      }
     }
 
     function showView(view) {
