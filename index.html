@@ -209,44 +209,45 @@
         </div>
 
         <div class="settings-stack">
-          <section class="card settings-card">
+          <section class="card settings-card settings-card-attributes">
             <div class="section-heading">
               <div>
                 <h2>Vaste IFC informatie</h2>
-                <p>Naam, bouwlaag, type en andere vaste informatie uit het model.</p>
+                <p>Naam, bouwlaag, type en materiaal uit het model.</p>
               </div>
             </div>
             <div class="attribute-list" id="attributeList"></div>
           </section>
 
-          <section class="card settings-card">
+          <section class="card settings-card settings-card-properties">
             <div class="section-heading">
               <div>
                 <h2>Standaard eigenschappen</h2>
+                <p>Psets en hoeveelhedensets, met ondersteuning voor <code>.*</code>.</p>
               </div>
-              <button class="button button-secondary section-action" id="addPropertyMappingButton" type="button">
+              <button class="button button-secondary section-action" id="addPropertyMappingButton" type="button" aria-label="Eigenschap toevoegen">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
-                Eigenschap toevoegen
+                Eigenschap
               </button>
             </div>
             <div class="property-mapping-list" id="propertyMappingList"></div>
           </section>
 
-          <section class="card settings-card">
+          <section class="card settings-card settings-card-classifications">
             <div class="section-heading">
               <div>
                 <h2>Classificatiemethoden</h2>
-                <p>Alle classificatienamen met NL-SfB, NL/SfB, NLSfB of een vergelijkbare schrijfwijze worden automatisch meegenomen.</p>
+                <p>NL-SfB schrijfwijzen worden automatisch herkend.</p>
               </div>
-              <button class="button button-secondary section-action" id="addClassificationAliasButton" type="button">
+              <button class="button button-secondary section-action" id="addClassificationAliasButton" type="button" aria-label="Classificatienaam toevoegen">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
-                Classificatienaam toevoegen
+                Classificatienaam
               </button>
             </div>
             <div class="classification-alias-list" id="classificationAliasList"></div>
           </section>
 
-          <section class="card settings-card build-sequence-settings">
+          <section class="card settings-card build-sequence-settings settings-card-build">
             <div class="section-heading section-heading-compact">
               <div>
                 <h2>Bouwvolgorde</h2>

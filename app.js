@@ -215,6 +215,7 @@
       elements.mainView.hidden = isSettings;
       elements.settingsView.hidden = !isSettings;
       elements.openSettingsButton.hidden = isSettings;
+      document.body.classList.toggle('settings-open', isSettings);
       window.scrollTo({ top: 0, behavior: 'instant' });
     }
 
@@ -382,8 +383,8 @@
       row.setAttribute('data-property-mapping-row', '');
       row.innerHTML = `
         <div class="compact-field">
-          <label>Pset in het model</label>
-          <input class="input" type="text" maxlength="255" spellcheck="false" data-mapping-pset value="${escapeHtml(mapping.psetPattern || DEFAULT_PROPERTY_PSET_PATTERN)}" placeholder="Pset_.*Common">
+          <label>Set in het model</label>
+          <input class="input" type="text" maxlength="255" spellcheck="false" data-mapping-pset value="${escapeHtml(mapping.psetPattern || DEFAULT_PROPERTY_PSET_PATTERN)}" placeholder="Pset_.*Common of Qto_.*BaseQuantities">
         </div>
         <div class="compact-field">
           <label>Eigenschap in het model</label>
@@ -411,9 +412,8 @@
       row.className = 'classification-alias-row';
       row.setAttribute('data-classification-alias-row', '');
       row.innerHTML = `
-        <div class="compact-field">
-          <label>Naam in het model</label>
-          <input class="input" type="text" maxlength="255" spellcheck="false" data-classification-alias value="${escapeHtml(alias || '')}" placeholder="bijvoorbeeld Assembly Code">
+        <div class="compact-field classification-alias-field">
+          <input class="input" type="text" maxlength="255" spellcheck="false" data-classification-alias value="${escapeHtml(alias || '')}" placeholder="bijvoorbeeld Assembly Code" aria-label="Naam van classificatiemethode in het model">
         </div>
         <button class="button button-quiet remove-mapping-button" type="button" data-remove-classification-alias aria-label="Classificatiemethode verwijderen">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true">
@@ -610,7 +610,7 @@
         }
 
         updateProgress(filesToProcess.length > 1 ? 98 : 100, filesToProcess.length > 1 ? 'Downloadbestand maken' : 'Gereed');
-        await showResult(results, failures, targetPsetName, filesToProcess.length);
+        await showResult(results, failures, filesToProcess.length);
       } catch (error) {
         elements.statusCard.hidden = true;
         showMainError(error.message || String(error));
@@ -705,10 +705,10 @@
       elements.statusMessage.textContent = message || '';
     }
 
-    async function showResult(results, failures, targetPsetName, totalSelectedFiles) {
+    async function showResult(results, failures, totalSelectedFiles) {
       revokeOutputUrls();
       const multipleSelection = totalSelectedFiles > 1;
-      const namedResults = assignUniqueOutputNames(results, targetPsetName);
+      const namedResults = assignUniqueOutputNames(results);
       let downloadBlob;
       let downloadName;
 
@@ -759,16 +759,17 @@
       elements.resultCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
-    function assignUniqueOutputNames(results, targetPsetName) {
+    function assignUniqueOutputNames(results) {
       const usedNames = new Set();
       return results.map((result) => {
-        const baseName = result.sourceFile.name.replace(/\.ifc$/i, '');
-        const safeSuffix = targetPsetName.replace(/[^a-z0-9_]+/gi, '_').replace(/^_+|_+$/g, '') || 'Pset';
-        const preferredName = `${baseName}_${safeSuffix}.ifc`;
+        const originalName = String(result.sourceFile && result.sourceFile.name || 'model.ifc')
+          .replace(/[\\/]+/g, '_');
+        const preferredName = /\.ifc$/i.test(originalName) ? originalName : `${originalName}.ifc`;
+        const baseName = preferredName.replace(/\.ifc$/i, '');
         let outputName = preferredName;
         let counter = 2;
         while (usedNames.has(outputName.toLocaleLowerCase('nl-NL'))) {
-          outputName = `${baseName}_${safeSuffix}_${counter}.ifc`;
+          outputName = `${baseName}_${counter}.ifc`;
           counter += 1;
         }
         usedNames.add(outputName.toLocaleLowerCase('nl-NL'));

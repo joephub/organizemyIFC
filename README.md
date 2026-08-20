@@ -15,7 +15,7 @@ Er is geen build stap, package manager of servercode nodig.
 
 Via het uploadvlak kunnen één of meer `.ifc` bestanden tegelijk worden gekozen of gesleept. De modellen worden achter elkaar en volledig lokaal verwerkt.
 
-Bij één model wordt een nieuw IFC bestand aangeboden. Bij meerdere modellen maakt de app één ZIP bestand met daarin voor ieder bronmodel een afzonderlijk georganiseerd IFC bestand. Modellen worden niet samengevoegd. Hierdoor blijven de oorspronkelijke modelgrenzen, disciplines en bestandsnamen herkenbaar.
+Bij één model wordt een nieuw IFC bestand aangeboden met exact dezelfde bestandsnaam als het bronmodel. Bij meerdere modellen maakt de app één ZIP bestand met daarin voor ieder bronmodel een afzonderlijk georganiseerd IFC bestand onder de oorspronkelijke bestandsnaam. Modellen worden niet samengevoegd. Daardoor kan een georganiseerd model bewust over de vorige versie worden opgeslagen. Alleen wanneer binnen één selectie twee bronbestanden exact dezelfde naam hebben, krijgt het tweede bestand in de ZIP een volgnummer om een dubbele ZIP naam te voorkomen.
 
 Wanneer één bestand uit een selectie niet kan worden verwerkt, gaat de app verder met de overige bestanden. De beschikbare resultaten worden alsnog in het ZIP bestand geplaatst en de mislukte bestandsnaam wordt in de meldingen genoemd.
 
@@ -58,7 +58,7 @@ Ondersteunde STEP IFC schema's:
 - IFC 4
 - IFC 4x3
 
-Voor het eigenschappen tabje neemt de tool bestaande IFC waarden over. Bij iedere ingestelde eigenschap kan afzonderlijk worden opgegeven uit welk IFC PropertySet de waarde moet komen. In de Pset naam mag `.*` als wildcard worden gebruikt, bijvoorbeeld `Pset_.*Common`. De enige automatische aanvulling is de afgesproken NL-SfB code `XX` voor geometrische objecten zonder herkenbare NL-SfB codering.
+Voor het eigenschappen tabje neemt de tool bestaande IFC waarden over. Bij iedere ingestelde eigenschap kan afzonderlijk worden opgegeven uit welke set de waarde moet komen. De app leest zowel `IfcPropertySet` als `IfcElementQuantity`. In de setnaam mag `.*` als wildcard worden gebruikt, bijvoorbeeld `Pset_.*Common` of `Qto_.*BaseQuantities`. Een exact gebruikte naam zoals `BaseQuantities` werkt eveneens. De enige automatische aanvulling is de afgesproken NL-SfB code `XX` voor geometrische objecten zonder herkenbare NL-SfB codering.
 
 De standaardkoppelingen gebruiken allemaal het Pset patroon `Pset_.*Common`:
 
@@ -68,7 +68,7 @@ De standaardkoppelingen gebruiken allemaal het Pset patroon `Pset_.*Common`:
 - `AcousticRating` naar `Geluidwerendheid`
 - `ThermalTransmittance` naar `Warmtedoorgangscoëfficiënt`
 
-Een koppeling wordt alleen toegevoegd wanneer de bronwaarde werkelijk op het IFC object aanwezig is. Via het plusje kunnen extra regels met een eigen Pset patroon, broneigenschap en doelnaam worden toegevoegd. Een exact Pset kan rechtstreeks worden ingevuld en `.*` kan een variabel deel van de naam vervangen.
+Een koppeling wordt alleen toegevoegd wanneer de bronwaarde werkelijk op het IFC object aanwezig is. Via het plusje kunnen extra regels met een eigen setpatroon, broneigenschap en doelnaam worden toegevoegd. Een exacte PropertySet of hoeveelhedenset kan rechtstreeks worden ingevuld en `.*` kan een variabel deel van de naam vervangen. Zo kan `Height` bijvoorbeeld uit `BaseQuantities` of uit `Qto_.*BaseQuantities` worden overgenomen.
 
 In de geavanceerde instellingen worden de vaste IFC velden aangeduid met hun herkenbare termen, waaronder `IFC entiteit`, `IFC PredefinedType` en `Materiaal`. Voor `Materiaal` verzamelt de app alle namen van gekoppelde `IfcMaterial` entiteiten. Meerdere namen worden uniek en kommagescheiden opgenomen. Materialen die via het gekoppelde IFC type zijn toegewezen worden eveneens meegenomen. Zonder gekoppelde materiaalnaam wordt de eigenschap niet toegevoegd.
 
@@ -81,6 +81,7 @@ Classificatienamen met `NL-SfB`, `NL/SfB`, `NLSfB` of een vergelijkbare schrijfw
 
 Wijzigingen in de geavanceerde instellingen worden direct toegepast en lokaal in de browser bewaard. Met `Herstel standaardinstellingen` worden alle namen, koppelingen en classificatienamen teruggezet naar de meegeleverde standaard.
 
+Op brede schermen staan `Vaste IFC informatie` en `Standaard eigenschappen` naast elkaar. De regels, velden en knoppen zijn compacter weergegeven. Op smallere schermen worden de onderdelen automatisch onder elkaar geplaatst.
 
 De visualisatie toont `FireRating` aan de modelzijde en `WBDBO` in het eigenschappen tabje. De waarde blijft daarbij één op één gelijk.
 

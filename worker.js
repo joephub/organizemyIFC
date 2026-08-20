@@ -2,7 +2,7 @@
 
 const MAX_WARNINGS = 250;
 const APP_NAME = 'Organize my IFC';
-const APP_VERSION = '15';
+const APP_VERSION = '17';
 const PROCESSING_RECORD_PSET_NAME = 'Cpset_OrganizeMyIFC';
 const CLASSIFICATION_BATCH_SIZE = 4000;
 const CANONICAL_CLASSIFICATION_NAME = 'NL-SfB tabel 1';
@@ -1030,9 +1030,10 @@ function buildIndex(entityList, entities, schemaKey, config, addWarning) {
     if (!ownerHistoryId && entity.type === 'IFCOWNERHISTORY') ownerHistoryId = entity.id;
     if (!projectId && entity.type === 'IFCPROJECT') projectId = entity.id;
 
-    if (entity.type === 'IFCPROPERTYSET') {
+    if (entity.type === 'IFCPROPERTYSET' || entity.type === 'IFCELEMENTQUANTITY') {
       psetNameById.set(entity.id, getStringArg(entity, 2) || '');
-      psetProperties.set(entity.id, getRefIds(entity.args[4]));
+      const itemIndex = entity.type === 'IFCELEMENTQUANTITY' ? 5 : 4;
+      psetProperties.set(entity.id, getRefIds(entity.args[itemIndex]));
       continue;
     }
 
@@ -1140,12 +1141,12 @@ function buildIndex(entityList, entities, schemaKey, config, addWarning) {
     const directTypePsets = [];
 
     if (typeEntity.args[5]) {
-      directTypePsets.push(...getRefIds(typeEntity.args[5]).filter((id) => entities.get(id)?.type === 'IFCPROPERTYSET'));
+      directTypePsets.push(...getRefIds(typeEntity.args[5]).filter((id) => isSupportedPropertyDefinitionSet(entities.get(id))));
     }
 
     for (const arg of typeEntity.args) {
       for (const id of getRefIds(arg)) {
-        if (entities.get(id)?.type === 'IFCPROPERTYSET') directTypePsets.push(id);
+        if (isSupportedPropertyDefinitionSet(entities.get(id))) directTypePsets.push(id);
       }
     }
 
@@ -1666,13 +1667,7 @@ function collectMappedPropertyValues(objectId, typeId, index, entities, mappings
       const propertyValues = new Map();
       const propertyIds = index.psetProperties.get(psetId) || [];
       for (const propertyId of propertyIds) {
-        const property = entities.get(propertyId);
-        if (!property) continue;
-        const propertyName = getStringArg(property, 0);
-        if (!propertyName) continue;
-        const propertyValue = extractPropertyValue(property, entities);
-        if (propertyValue == null) continue;
-        propertyValues.set(normalizeKey(propertyName), propertyValue);
+        collectNamedDefinitionValues(propertyId, propertyValues, entities, new Set());
       }
 
       for (const mappingIndex of matchingMappings) {
@@ -1750,6 +1745,26 @@ function resolveMaterialNames(materialId, index, entities, activeIds) {
   return uniqueNames;
 }
 
+function collectNamedDefinitionValues(definitionId, target, entities, visited) {
+  if (!definitionId || visited.has(definitionId)) return;
+  visited.add(definitionId);
+  const definition = entities.get(definitionId);
+  if (!definition) return;
+
+  if (definition.type === 'IFCPHYSICALCOMPLEXQUANTITY') {
+    for (const nestedId of getRefIds(definition.args[2])) {
+      collectNamedDefinitionValues(nestedId, target, entities, visited);
+    }
+    return;
+  }
+
+  const definitionName = getStringArg(definition, 0);
+  if (!definitionName) return;
+  const definitionValue = extractPropertyValue(definition, entities);
+  if (definitionValue == null) return;
+  target.set(normalizeKey(definitionName), definitionValue);
+}
+
 function extractPropertyValue(property, entities) {
   switch (property.type) {
     case 'IFCPROPERTYSINGLEVALUE':
@@ -1775,6 +1790,15 @@ function extractPropertyValue(property, entities) {
     }
 
     case 'IFCPROPERTYREFERENCEVALUE':
+      return unwrapStepValue(property.args[3], entities);
+
+    case 'IFCQUANTITYLENGTH':
+    case 'IFCQUANTITYAREA':
+    case 'IFCQUANTITYVOLUME':
+    case 'IFCQUANTITYCOUNT':
+    case 'IFCQUANTITYWEIGHT':
+    case 'IFCQUANTITYTIME':
+    case 'IFCQUANTITYNUMBER':
       return unwrapStepValue(property.args[3], entities);
 
     default:
@@ -2557,7 +2581,15 @@ function enumValue(node) {
 function hasDirectPsetNamed(objectId, name, index, entities) {
   const psetIds = index.directPsetsByObject.get(objectId) || [];
   const normalizedTarget = normalizeKey(name);
-  return psetIds.some((psetId) => normalizeKey(index.psetNameById.get(psetId) || getStringArg(entities.get(psetId), 2)) === normalizedTarget);
+  return psetIds.some((psetId) => {
+    const entity = entities.get(psetId);
+    if (!entity || entity.type !== 'IFCPROPERTYSET') return false;
+    return normalizeKey(index.psetNameById.get(psetId) || getStringArg(entity, 2)) === normalizedTarget;
+  });
+}
+
+function isSupportedPropertyDefinitionSet(entity) {
+  return Boolean(entity && (entity.type === 'IFCPROPERTYSET' || entity.type === 'IFCELEMENTQUANTITY'));
 }
 
 function compilePsetWildcard(pattern) {
