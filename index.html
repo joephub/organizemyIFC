@@ -205,12 +205,8 @@
           <figure class="build-animation-card">
             <svg class="build-animation" viewBox="0 0 520 326" role="img" aria-labelledby="buildAnimationTitle buildAnimationDescription">
               <title id="buildAnimationTitle">Een gebouw wordt stap voor stap opgebouwd in hetzelfde perspectief als het IFC object</title>
-              <desc id="buildAnimationDescription">Funderingsstroken, vloer, draagconstructie, constructief dak, gevel, kozijn en dakpannen vallen achtereenvolgens op hun plek. Ieder onderdeel krijgt een oplopend volgordenummer.</desc>
+              <desc id="buildAnimationDescription">Vier funderingsstroken, vloer, draagconstructie, constructief dak, gevel, kozijn en dakpannen vallen achtereenvolgens op hun plek. Ieder onderdeel krijgt een oplopend volgordenummer.</desc>
               <defs>
-                <linearGradient id="foundationFill" x1="0" y1="0" x2="1" y2="1">
-                  <stop offset="0" stop-color="#f4f8f5"/>
-                  <stop offset="1" stop-color="#c9ddd6"/>
-                </linearGradient>
                 <linearGradient id="floorFill" x1="0" y1="0" x2="1" y2="1">
                   <stop offset="0" stop-color="#f7fad5"/>
                   <stop offset="1" stop-color="#dfe98a"/>
@@ -239,8 +235,11 @@
                   <path class="build-foundation-right" d="M205 300 330 238 330 251 205 313Z"/>
                   <path class="build-foundation-inner-left" d="M126 238 205 278 205 289 126 249Z"/>
                   <path class="build-foundation-inner-right" d="M205 278 284 238 284 249 205 289Z"/>
-                  <path class="build-foundation-top" fill-rule="evenodd" d="M205 176 330 238 205 300 80 238Z M205 199 284 238 205 278 126 238Z"/>
-                  <path class="build-outline" d="M205 176 330 238 205 300 80 238 205 176ZM205 199 284 238 205 278 126 238 205 199ZM80 238v13l125 62 125-62v-13M126 238v11l79 40 79-40v-11"/>
+                  <path class="build-foundation-strip build-foundation-strip-back-left" d="M205 176 80 238 126 238 205 199Z"/>
+                  <path class="build-foundation-strip build-foundation-strip-back-right" d="M205 176 330 238 284 238 205 199Z"/>
+                  <path class="build-foundation-strip build-foundation-strip-front-left" d="M80 238 205 300 205 278 126 238Z"/>
+                  <path class="build-foundation-strip build-foundation-strip-front-right" d="M330 238 205 300 205 278 284 238Z"/>
+                  <path class="build-outline" d="M80 238v13l125 62 125-62v-13M126 238v11l79 40 79-40v-11"/>
                   <g class="build-part-label" aria-hidden="true">
                     <path d="M78 284 112 268"/>
                     <rect x="34" y="272" width="44" height="24" rx="10"/>

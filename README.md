@@ -2,11 +2,11 @@
 
 Een statische webapp die aanwezige IFC informatie bundelt in één nieuw eigenschappen tabje. Eén of meer IFC modellen kunnen in dezelfde verwerking worden geselecteerd. De verwerking gebeurt volledig in de browser.
 
-## Versie 29
+## Versie 30
 
-De knop `Meer informatie` is van de bouwvolgordemodule op het hoofdscherm verwijderd. De uitgebreide uitleg blijft beschikbaar via de informatieknop bij `Bouwvolgorde` in Geavanceerde instellingen.
+De fundering in de bouwvolgordeanimatie bestaat nu zichtbaar uit vier afzonderlijke funderingsstroken. De stroken sluiten samen tot een vierkante funderingsring met een open midden. De vloer wordt in de volgende animatiestap boven op deze vier stroken geplaatst.
 
-De animatie, indeling en IFC verwerking zijn inhoudelijk niet gewijzigd.
+De overige animatiestappen, de indeling en de IFC verwerking zijn inhoudelijk niet gewijzigd.
 
 ## Direct op GitHub Pages plaatsen
 
@@ -58,7 +58,7 @@ De meegeleverde bron is één op één gekopieerd. De parser accepteert ook de a
 
 Onder het uploadvlak staat een tweede onderdeel met een herhalende animatie. De animatie gebruikt hetzelfde axonometrische perspectief als de kubus in de visualisatie bovenaan. Daardoor blijven de vloer, constructie, gevels, het kozijn en het dak tijdens het opbouwen herkenbaar als onderdelen van één driedimensionaal gebouw. De animatie bouwt het huis op in deze volgorde:
 
-1. Funderingsstroken
+1. Vier funderingsstroken in een gesloten vierkant
 2. Vloer
 3. Draagconstructie
 4. Constructieve daklaag

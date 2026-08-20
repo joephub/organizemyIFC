@@ -117,7 +117,11 @@ h1, h2, p { margin-top: 0; }
 .build-foundation-right { fill: #9fbfb5; }
 .build-foundation-inner-left { fill: #8eafa5; }
 .build-foundation-inner-right { fill: #7fa69b; }
-.build-foundation-top { fill: url(#foundationFill); }
+.build-foundation-strip { stroke: #66887f; stroke-width: 1.5; stroke-linejoin: round; }
+.build-foundation-strip-back-left { fill: #eef5f1; }
+.build-foundation-strip-back-right { fill: #dcebe6; }
+.build-foundation-strip-front-left { fill: #d2e3dd; }
+.build-foundation-strip-front-right { fill: #c3d9d2; }
 .build-floor-left { fill: #e5ecac; }
 .build-floor-right { fill: #d4df8c; }
 .build-floor-top { fill: url(#floorFill); stroke: #66887f; stroke-width: 1.5; stroke-linejoin: round; }
