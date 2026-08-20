@@ -200,79 +200,89 @@
         <section class="sequence-feature" aria-labelledby="homeSequenceTitle">
           <figure class="build-animation-card">
             <svg class="build-animation" viewBox="0 0 520 360" role="img" aria-labelledby="buildAnimationTitle buildAnimationDescription">
-              <title id="buildAnimationTitle">Een gebouw wordt stap voor stap opgebouwd</title>
-              <desc id="buildAnimationDescription">Fundering, vloer, constructie, gevel, kozijn en dak vallen achtereenvolgens op hun plek.</desc>
+              <title id="buildAnimationTitle">Een gebouw wordt stap voor stap opgebouwd in hetzelfde perspectief als het IFC object</title>
+              <desc id="buildAnimationDescription">Fundering, vloer, constructie, gevel, kozijn en dak vallen achtereenvolgens op hun plek in een isometrisch perspectief.</desc>
               <defs>
                 <linearGradient id="foundationFill" x1="0" y1="0" x2="1" y2="1">
-                  <stop offset="0" stop-color="#dfe9e5"/>
-                  <stop offset="1" stop-color="#c5d6d0"/>
+                  <stop offset="0" stop-color="#e4ece9"/>
+                  <stop offset="1" stop-color="#c8d8d2"/>
                 </linearGradient>
-                <linearGradient id="roofFill" x1="0" y1="0" x2="1" y2="1">
+                <linearGradient id="floorFill" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0" stop-color="#ffffff"/>
+                  <stop offset="1" stop-color="#edf3f0"/>
+                </linearGradient>
+                <linearGradient id="roofLeftFill" x1="0" y1="0" x2="1" y2="1">
                   <stop offset="0" stop-color="#0b7a6d"/>
-                  <stop offset="1" stop-color="#075e54"/>
+                  <stop offset="1" stop-color="#08685e"/>
                 </linearGradient>
-                <filter id="buildSoftShadow" x="-30%" y="-30%" width="160%" height="170%">
+                <linearGradient id="roofRightFill" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0" stop-color="#087064"/>
+                  <stop offset="1" stop-color="#07574f"/>
+                </linearGradient>
+                <filter id="buildSoftShadow" x="-30%" y="-30%" width="170%" height="180%">
                   <feDropShadow dx="0" dy="10" stdDeviation="8" flood-color="#173a34" flood-opacity="0.15"/>
                 </filter>
               </defs>
 
               <g class="build-scene" filter="url(#buildSoftShadow)">
-                <ellipse class="build-ground-shadow" cx="260" cy="319" rx="164" ry="18"/>
+                <ellipse class="build-ground-shadow" cx="205" cy="318" rx="151" ry="18"/>
 
                 <g class="build-part build-part-foundation">
-                  <path class="build-foundation-side" d="M112 284 408 284 374 323 146 323Z"/>
-                  <path class="build-foundation-top" d="M112 276 408 276 374 307 146 307Z"/>
-                  <path class="build-outline" d="M112 276 408 276 374 307 146 307 112 276Z"/>
+                  <path class="build-foundation-left" d="M80 232 205 295 205 309 80 246Z"/>
+                  <path class="build-foundation-right" d="M205 295 330 232 330 246 205 309Z"/>
+                  <path class="build-foundation-top" d="M205 170 330 232 205 295 80 232Z"/>
+                  <path class="build-outline" d="M205 170 330 232 205 295 80 232 205 170Zm-125 62v14l125 63 125-63v-14"/>
                 </g>
 
                 <g class="build-part build-part-floor">
-                  <path class="build-floor-side" d="M145 247 375 247 352 276 168 276Z"/>
-                  <path class="build-floor-top" d="M145 239 375 239 352 263 168 263Z"/>
-                  <path class="build-outline" d="M145 239 375 239 352 263 168 263 145 239Z"/>
+                  <path class="build-floor-left" d="M95 214 205 269 205 278 95 223Z"/>
+                  <path class="build-floor-right" d="M205 269 315 214 315 223 205 278Z"/>
+                  <path class="build-floor-top" d="M205 159 315 214 205 269 95 214Z"/>
+                  <path class="build-outline" d="M205 159 315 214 205 269 95 214 205 159Zm-110 55v9l110 55 110-55v-9"/>
                 </g>
 
                 <g class="build-part build-part-structure">
-                  <path class="build-structure-line" d="M167 239V139M352 239V139M214 239V139M306 239V139"/>
-                  <path class="build-structure-line build-structure-beam" d="M158 145H361M158 190H361M168 239H352"/>
-                  <path class="build-structure-brace" d="m168 239 46-49m0 49-46-49m138 49 46-49m0 49-46-49"/>
+                  <path class="build-structure-line" d="M205 159V74M95 214V129M205 269V184M315 214V129"/>
+                  <path class="build-structure-line build-structure-beam" d="M205 74 315 129 205 184 95 129 205 74ZM205 159 315 214 205 269 95 214 205 159Z"/>
+                  <path class="build-structure-brace" d="M95 214 205 184M205 269 95 129M205 269 315 129M315 214 205 184"/>
                 </g>
 
                 <g class="build-part build-part-facade">
-                  <rect class="build-facade-panel" x="157" y="145" width="204" height="96" rx="4"/>
-                  <rect class="build-window-opening" x="228" y="174" width="64" height="54" rx="2"/>
-                  <path class="build-facade-seam" d="M157 190h71M292 190h69"/>
+                  <path class="build-facade-left" d="M95 129 205 184 205 269 95 214Z"/>
+                  <path class="build-facade-right" d="M205 184 315 129 315 214 205 269Z"/>
+                  <path class="build-facade-seam" d="M95 172.5 205 227.5 315 172.5"/>
+                  <path class="build-window-opening" d="M232.5 194.1 284.2 168.2 284.2 207.3 232.5 233.2Z"/>
+                  <path class="build-outline build-envelope-outline" d="M205 74 315 129V214L205 269 95 214V129L205 74Z"/>
                 </g>
 
                 <g class="build-part build-part-window">
-                  <rect class="build-window-frame" x="232" y="178" width="56" height="46" rx="2"/>
-                  <path class="build-window-frame" d="M260 178v46M232 201h56"/>
-                  <rect class="build-window-glass" x="236" y="182" width="20" height="15" rx="1"/>
-                  <rect class="build-window-glass" x="264" y="182" width="20" height="15" rx="1"/>
-                  <rect class="build-window-glass" x="236" y="205" width="20" height="15" rx="1"/>
-                  <rect class="build-window-glass" x="264" y="205" width="20" height="15" rx="1"/>
+                  <path class="build-window-glass" d="M232.5 194.1 284.2 168.2 284.2 207.3 232.5 233.2Z"/>
+                  <path class="build-window-frame" d="M232.5 194.1 284.2 168.2 284.2 207.3 232.5 233.2 232.5 194.1ZM258.4 181.1V220.2M232.5 213.6 284.2 187.7"/>
                 </g>
 
                 <g class="build-part build-part-roof">
-                  <path class="build-roof-side" d="M119 146 260 60 401 146 377 166 260 96 143 166Z"/>
-                  <path class="build-roof-top" d="M119 136 260 50 401 136 377 155 260 85 143 155Z"/>
-                  <path class="build-roof-ridge" d="m119 136 141-86 141 86M260 50v35"/>
+                  <path class="build-roof-back-left" d="M205 28 205 68 84 129Z"/>
+                  <path class="build-roof-back-right" d="M205 28 326 129 205 68Z"/>
+                  <path class="build-roof-left" d="M205 28 84 129 205 190Z"/>
+                  <path class="build-roof-right" d="M205 28 205 190 326 129Z"/>
+                  <path class="build-roof-ridge" d="M205 28 84 129 205 190 326 129 205 28ZM205 68 84 129M205 68 326 129"/>
                 </g>
               </g>
 
               <g class="build-code-badge" aria-hidden="true">
-                <rect x="319" y="24" width="169" height="61" rx="12"/>
-                <text x="335" y="46" class="build-code-label">Bouwvolgorde</text>
-                <text x="335" y="69" class="build-code-value">09.003800.10</text>
+                <rect x="334" y="24" width="170" height="62" rx="12"/>
+                <text x="350" y="47" class="build-code-label">Bouwvolgorde</text>
+                <text x="350" y="71" class="build-code-value">09.003800.10</text>
               </g>
 
               <g class="build-stage-line" aria-hidden="true">
-                <path d="M76 336H444"/>
-                <circle class="build-stage-dot build-stage-dot-1" cx="76" cy="336" r="5"/>
-                <circle class="build-stage-dot build-stage-dot-2" cx="150" cy="336" r="5"/>
-                <circle class="build-stage-dot build-stage-dot-3" cx="224" cy="336" r="5"/>
-                <circle class="build-stage-dot build-stage-dot-4" cx="298" cy="336" r="5"/>
-                <circle class="build-stage-dot build-stage-dot-5" cx="372" cy="336" r="5"/>
-                <circle class="build-stage-dot build-stage-dot-6" cx="444" cy="336" r="5"/>
+                <path d="M60 342H460"/>
+                <circle class="build-stage-dot build-stage-dot-1" cx="60" cy="342" r="5"/>
+                <circle class="build-stage-dot build-stage-dot-2" cx="140" cy="342" r="5"/>
+                <circle class="build-stage-dot build-stage-dot-3" cx="220" cy="342" r="5"/>
+                <circle class="build-stage-dot build-stage-dot-4" cx="300" cy="342" r="5"/>
+                <circle class="build-stage-dot build-stage-dot-5" cx="380" cy="342" r="5"/>
+                <circle class="build-stage-dot build-stage-dot-6" cx="460" cy="342" r="5"/>
               </g>
             </svg>
             <figcaption>Fundering · vloer · constructie · gevel · kozijn · dak</figcaption>

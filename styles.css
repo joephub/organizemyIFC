@@ -113,23 +113,30 @@ h1, h2, p { margin-top: 0; }
 .build-scene { transform-origin: center; }
 .build-ground-shadow { fill: rgba(23,58,52,.10); }
 .build-part { opacity: 0; transform-box: fill-box; transform-origin: center; will-change: transform, opacity; }
-.build-outline { fill: none; stroke: #4e726a; stroke-width: 2; stroke-linejoin: round; }
-.build-foundation-side { fill: #b9cdc6; }
+.build-outline { fill: none; stroke: #4e726a; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.build-foundation-left { fill: #aec6be; }
+.build-foundation-right { fill: #9ab8ae; }
 .build-foundation-top { fill: url(#foundationFill); }
-.build-floor-side { fill: #d5e1dd; }
-.build-floor-top { fill: #f8faf8; stroke: #66887f; stroke-width: 1.7; stroke-linejoin: round; }
-.build-structure-line { fill: none; stroke: #27665c; stroke-width: 7; stroke-linecap: square; stroke-linejoin: round; }
-.build-structure-beam { stroke-width: 6; }
-.build-structure-brace { fill: none; stroke: #79a199; stroke-width: 2.2; stroke-linecap: round; }
-.build-facade-panel { fill: rgba(235,242,239,.96); stroke: #557970; stroke-width: 2; }
-.build-window-opening { fill: #fff; stroke: #99aea7; stroke-width: 1.5; }
-.build-facade-seam { fill: none; stroke: #a8b9b3; stroke-width: 1.4; }
-.build-window-frame { fill: none; stroke: var(--orange); stroke-width: 4; stroke-linejoin: round; }
-.build-window-glass { fill: rgba(8,112,100,.10); stroke: none; }
-.build-roof-side { fill: #075b52; }
-.build-roof-top { fill: url(#roofFill); }
-.build-roof-ridge { fill: none; stroke: #dbe9e5; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-.build-code-badge { opacity: 0; will-change: opacity, transform; transform-origin: 403px 54px; }
+.build-floor-left { fill: #d6e2de; }
+.build-floor-right { fill: #c7d8d2; }
+.build-floor-top { fill: url(#floorFill); stroke: #66887f; stroke-width: 1.6; stroke-linejoin: round; }
+.build-structure-line, .build-structure-beam, .build-structure-brace { fill: none; stroke-linejoin: round; }
+.build-structure-line { stroke: #27665c; stroke-width: 6; stroke-linecap: square; }
+.build-structure-beam { stroke: #27665c; stroke-width: 5; }
+.build-structure-brace { stroke: #7da39a; stroke-width: 2; stroke-linecap: round; }
+.build-facade-left { fill: rgba(235,242,239,.98); stroke: #557970; stroke-width: 1.8; stroke-linejoin: round; }
+.build-facade-right { fill: rgba(226,237,233,.98); stroke: #557970; stroke-width: 1.8; stroke-linejoin: round; }
+.build-envelope-outline { stroke-width: 1.8; }
+.build-window-opening { fill: #fff; stroke: #99aea7; stroke-width: 1.4; stroke-linejoin: round; }
+.build-facade-seam { fill: none; stroke: #a8b9b3; stroke-width: 1.3; }
+.build-window-frame { fill: none; stroke: var(--orange); stroke-width: 3.5; stroke-linejoin: round; stroke-linecap: round; }
+.build-window-glass { fill: rgba(8,112,100,.11); stroke: none; }
+.build-roof-back-left { fill: #2d8176; }
+.build-roof-back-right { fill: #1d7166; }
+.build-roof-left { fill: url(#roofLeftFill); }
+.build-roof-right { fill: url(#roofRightFill); }
+.build-roof-ridge { fill: none; stroke: #dbe9e5; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.build-code-badge { opacity: 0; will-change: opacity, transform; transform-origin: 419px 55px; }
 .build-code-badge rect { fill: var(--accent); }
 .build-code-label { fill: #d6ece7; font-size: 10px; font-weight: 800; letter-spacing: .055em; text-transform: uppercase; }
 .build-code-value { fill: #fff; font-size: 18px; font-weight: 850; font-variant-numeric: tabular-nums; }

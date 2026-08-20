@@ -50,7 +50,7 @@ De meegeleverde bron is één op één gekopieerd. De parser accepteert ook de a
 
 ## Bouwvolgorde op het hoofdscherm
 
-Onder het uploadvlak staat een tweede onderdeel met een herhalende animatie. De animatie bouwt een eenvoudig huis op in deze volgorde:
+Onder het uploadvlak staat een tweede onderdeel met een herhalende animatie. De animatie gebruikt hetzelfde axonometrische perspectief als de kubus in de visualisatie bovenaan. Daardoor blijven de vloer, constructie, gevels, het kozijn en het dak tijdens het opbouwen herkenbaar als onderdelen van één driedimensionaal gebouw. De animatie bouwt het huis op in deze volgorde:
 
 1. Fundering
 2. Vloer
@@ -58,6 +58,7 @@ Onder het uploadvlak staat een tweede onderdeel met een herhalende animatie. De 
 4. Gevel
 5. Kozijn
 6. Dak
+
 
 De kaart staat op brede schermen links uitgelijnd met de titel `Breng je IFC model op orde`. De tekst ernaast bevat een rechtstreekse koppeling naar het onderdeel Bouwvolgorde in Geavanceerde instellingen. De knop `Meer informatie` opent direct de bestaande uitleg over de berekening van de bouwvolgorde. Bij een systeeminstelling voor minder beweging wordt de complete woning zonder animatie getoond.
 
