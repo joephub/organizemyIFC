@@ -2,11 +2,11 @@
 
 Een statische webapp die aanwezige IFC informatie bundelt in één nieuw eigenschappen tabje. Eén of meer IFC modellen kunnen in dezelfde verwerking worden geselecteerd. De verwerking gebeurt volledig in de browser.
 
-## Versie 30
+## Versie 31
 
-De fundering in de bouwvolgordeanimatie bestaat nu zichtbaar uit vier afzonderlijke funderingsstroken. De stroken sluiten samen tot een vierkante funderingsring met een open midden. De vloer wordt in de volgende animatiestap boven op deze vier stroken geplaatst.
+Het hoofdscherm heeft meer witruimte gekregen. De uploadkaart staat verder onder het openingsdeel en de bouwvolgordemodule begint duidelijk lager. De uploadkaart is bovendien smaller, staat gecentreerd en hoeft niet aan de rechter uitlijnlijn te eindigen.
 
-De overige animatiestappen, de indeling en de IFC verwerking zijn inhoudelijk niet gewijzigd.
+De volledig opgebouwde woning met de bouwvolgordecode blijft in de animatie ongeveer vijf seconden zichtbaar voordat de animatie opnieuw begint.
 
 ## Direct op GitHub Pages plaatsen
 
@@ -72,7 +72,7 @@ De kaart staat op brede schermen links uitgelijnd met de titel `Breng je IFC mod
 
 ### Rustigere afstand op het hoofdscherm
 
-De uploadkaart is op brede schermen compacter gemaakt. Het invoerveld en de knop staan naast elkaar, terwijl boven en onder de kaart extra witruimte is toegevoegd. Daardoor blijven de drie hoofddelen duidelijk van elkaar gescheiden zonder dat de pagina merkbaar langer wordt.
+De uploadkaart is op brede schermen compacter en smaller gemaakt. De kaart staat gecentreerd en hoeft niet meer aan de rechter uitlijnlijn te eindigen. Boven de uploadkaart en vóór de bouwvolgordemodule is extra witruimte toegevoegd, zodat de drie hoofddelen rustiger van elkaar zijn gescheiden.
 
 ## Gebruik
 
