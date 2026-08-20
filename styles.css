@@ -220,7 +220,7 @@ summary { cursor: pointer; color: var(--muted); font-size: 13px; font-weight: 70
 .dialog-close-button svg { width: 18px; height: 18px; }
 .sequence-formula {
   display: grid; grid-template-columns: minmax(145px, 1fr) auto minmax(145px, 1fr) auto minmax(190px, 1.15fr);
-  align-items: stretch; gap: 10px;
+  grid-template-rows: auto auto; align-items: stretch; gap: 10px;
 }
 .sequence-source-card, .sequence-result-card {
   display: grid; min-height: 178px; align-content: center; justify-items: center; border: 1px solid var(--line);
@@ -241,7 +241,8 @@ summary { cursor: pointer; color: var(--muted); font-size: 13px; font-weight: 70
 .sequence-operator { align-self: center; color: var(--accent); font-size: 25px; font-weight: 800; }
 .sequence-arrow { font-size: 29px; }
 .sequence-code-key {
-  display: grid; grid-template-columns: .72fr 1.45fr .72fr; gap: 8px; width: min(510px, 100%); margin: 13px 0 0 auto;
+  display: grid; grid-column: 5; grid-row: 2; grid-template-columns: .72fr 1.45fr .72fr;
+  gap: 8px; width: 100%; margin: 0;
 }
 .sequence-code-part {
   position: relative; display: grid; min-width: 0; border: 1px solid transparent; border-radius: 9px 9px 9px 3px;
@@ -360,7 +361,7 @@ summary { cursor: pointer; color: var(--muted); font-size: 13px; font-weight: 70
   .sequence-formula { grid-template-columns: 1fr; gap: 7px; }
   .sequence-source-card, .sequence-result-card { min-height: 132px; }
   .sequence-operator { transform: rotate(90deg); justify-self: center; line-height: 1; }
-  .sequence-code-key { margin-left: 0; }
+  .sequence-code-key { grid-column: 1; grid-row: auto; margin-left: 0; }
   .sequence-order-list { grid-template-columns: 1fr; }
   .sequence-step-list { grid-template-columns: 1fr; }
   .sequence-order-item { display: grid; grid-template-columns: 112px 1fr; align-items: center; gap: 8px; }

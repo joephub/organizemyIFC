@@ -2,7 +2,7 @@
 
 const MAX_WARNINGS = 250;
 const APP_NAME = 'Organize my IFC';
-const APP_VERSION = '20';
+const APP_VERSION = '21';
 const PROCESSING_RECORD_PSET_NAME = 'Cpset_OrganizeMyIFC';
 const CLASSIFICATION_BATCH_SIZE = 4000;
 const CANONICAL_CLASSIFICATION_NAME = 'NL-SfB tabel 1';

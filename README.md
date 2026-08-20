@@ -105,7 +105,7 @@ Objecten met een ontbrekende NL-SfB code en objecten met een code die niet in `n
 
 ## Bouwvolgorde
 
-In de geavanceerde instellingen staat de optie `Voeg bouwvolgorde toe`. Deze optie staat standaard uit. Naast de titel staat een informatieknop. Die opent eerst alleen de compacte visuele uitleg waarin de NL-SfB code en de Z hoogte worden samengevoegd tot één bouwvolgordecode. In het onderdeel dat de code opdeelt kan vervolgens op `fase` worden geklikt. Pas dan verschijnt de actuele fasenindeling uit `bouwvolgorde_nlsfb.json`. Alle fasen staan standaard ingeklapt. Door één fase te openen worden de stappen van die fase in volgorde getoond, inclusief het codepatroon, de gekoppelde NL-SfB codes en de gebruikte bouwlaagselectie. Bij het openen van een andere fase wordt de vorige weer gesloten. Wanneer de JSON wordt aangepast, verandert dit overzicht automatisch mee. Alle regels in het korte volgordevoorbeeld hebben dezelfde weergave; er wordt geen willekeurige stap uitgelicht. De uitleg vermeldt ook dat code en omschrijving in het eigenschappen tabje en in de classificatie `Bouwvolgorde` worden geplaatst.
+In de geavanceerde instellingen staat de optie `Voeg bouwvolgorde toe`. Deze optie staat standaard uit. Naast de titel staat een informatieknop. Die opent eerst alleen de compacte visuele uitleg waarin de NL-SfB code en de Z hoogte worden samengevoegd tot één bouwvolgordecode. In het onderdeel dat de code opdeelt kan vervolgens op `fase` worden geklikt. Pas dan verschijnt de actuele fasenindeling uit `bouwvolgorde_nlsfb.json`. Alle fasen staan standaard ingeklapt. Door één fase te openen worden de stappen van die fase in volgorde getoond, inclusief het codepatroon, de gekoppelde NL-SfB codes en de gebruikte bouwlaagselectie. Bij het openen van een andere fase wordt de vorige weer gesloten. Wanneer de JSON wordt aangepast, verandert dit overzicht automatisch mee. Alle regels in het korte volgordevoorbeeld hebben dezelfde weergave; er wordt geen willekeurige stap uitgelicht. De uitleg vermeldt ook dat code en omschrijving in het eigenschappen tabje en in de classificatie `Bouwvolgorde` worden geplaatst. De drie codeonderdelen `fase`, `Z in mm` en `stap` staan over de volledige breedte exact onder de donkergroene resultaatkaart.
 
 
 Wanneer de optie aan staat, krijgen geometrische IFC objecten twee extra eigenschappen in het gekozen eigenschappen tabje:
@@ -210,3 +210,4 @@ Omschrijving: Geen bouwvolgorde ingesteld voor deze NL-SfB code
 ```
 
 Ook deze waarden zijn in de JSON aanpasbaar.
+
