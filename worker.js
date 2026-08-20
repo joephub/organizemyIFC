@@ -2,7 +2,7 @@
 
 const MAX_WARNINGS = 250;
 const APP_NAME = 'Organize my IFC';
-const APP_VERSION = '24';
+const APP_VERSION = '25';
 const PROCESSING_RECORD_PSET_NAME = 'Cpset_OrganizeMyIFC';
 const CLASSIFICATION_BATCH_SIZE = 4000;
 const CANONICAL_CLASSIFICATION_NAME = 'NL-SfB tabel 1';
@@ -15,6 +15,9 @@ const TWO_DIGIT_UNRESOLVED_NLSFB_DESCRIPTION = 'Geen of onbekende NL-SfB coderin
 const CONSTRUCTION_SEQUENCE_CLASSIFICATION_NAME = 'Bouwvolgorde';
 const DEFAULT_CONSTRUCTION_SEQUENCE_CODE_PROPERTY = 'Bouwvolgorde code';
 const DEFAULT_CONSTRUCTION_SEQUENCE_DESCRIPTION_PROPERTY = 'Bouwvolgorde omschrijving';
+const DEFAULT_CONSTRUCTION_SEQUENCE_PHASE_PROPERTY = 'Bouwvolgorde Fase';
+const DEFAULT_CONSTRUCTION_SEQUENCE_STEP_PROPERTY = 'Bouwvolgorde Stap';
+const DEFAULT_CONSTRUCTION_SEQUENCE_ELEVATION_PROPERTY = 'Bouwvolgorde Verdiepingshoogte';
 const DEFAULT_CONSTRUCTION_SEQUENCE_MISSING_CODE = 'XX';
 const DEFAULT_CONSTRUCTION_SEQUENCE_MISSING_DESCRIPTION = 'Geen bouwvolgorde omdat NL-SfB code ontbreekt';
 const DEFAULT_CONSTRUCTION_SEQUENCE_UNMAPPED_CODE = 'NM';
@@ -187,6 +190,13 @@ function processIfc(text, config, nlsfbEntries, constructionSequenceConfig) {
       constructionSequenceElevationUnit: constructionSequence ? 'mm' : null,
       constructionSequenceElevationSource: storeySequence ? storeySequence.elevationSource : null,
       constructionSequenceElevationRoundingMm: storeySequence ? storeySequence.elevationRoundingMm : null,
+      constructionSequencePropertyNames: constructionSequence ? {
+        code: constructionSequence.settings.codePropertyName,
+        description: constructionSequence.settings.descriptionPropertyName,
+        phase: constructionSequence.settings.phasePropertyName,
+        storeyElevation: constructionSequence.settings.elevationPropertyName,
+        step: constructionSequence.settings.stepPropertyName,
+      } : null,
       processingRecordPsetName: PROCESSING_RECORD_PSET_NAME,
       applicationName: APP_NAME,
       applicationVersion: APP_VERSION,
@@ -416,6 +426,26 @@ function processIfc(text, config, nlsfbEntries, constructionSequenceConfig) {
         type: 'label',
         value: constructionAssignment.description,
       });
+
+      if (constructionAssignment.kind === 'mapped') {
+        propertyCandidates.push({
+          name: constructionSequence.settings.phasePropertyName,
+          type: 'identifier',
+          value: constructionAssignment.phaseCode,
+        });
+        propertyCandidates.push({
+          name: constructionSequence.settings.elevationPropertyName,
+          type: 'length',
+          value: Number.isFinite(constructionAssignment.roundedElevationMm)
+            ? constructionAssignment.roundedElevationMm / lengthUnitScaleToMillimetres
+            : null,
+        });
+        propertyCandidates.push({
+          name: constructionSequence.settings.stepPropertyName,
+          type: 'identifier',
+          value: constructionAssignment.stepCode,
+        });
+      }
     }
 
     const properties = buildTargetProperties(propertyCandidates, addWarning, expressId);
@@ -2162,6 +2192,12 @@ function normalizeConstructionSequenceConfig(data) {
       || DEFAULT_CONSTRUCTION_SEQUENCE_CODE_PROPERTY,
     descriptionPropertyName: String(rawSettings.eigenschap_omschrijving || DEFAULT_CONSTRUCTION_SEQUENCE_DESCRIPTION_PROPERTY).trim()
       || DEFAULT_CONSTRUCTION_SEQUENCE_DESCRIPTION_PROPERTY,
+    phasePropertyName: String(rawSettings.eigenschap_fase || DEFAULT_CONSTRUCTION_SEQUENCE_PHASE_PROPERTY).trim()
+      || DEFAULT_CONSTRUCTION_SEQUENCE_PHASE_PROPERTY,
+    stepPropertyName: String(rawSettings.eigenschap_stap || DEFAULT_CONSTRUCTION_SEQUENCE_STEP_PROPERTY).trim()
+      || DEFAULT_CONSTRUCTION_SEQUENCE_STEP_PROPERTY,
+    elevationPropertyName: String(rawSettings.eigenschap_verdiepingshoogte || DEFAULT_CONSTRUCTION_SEQUENCE_ELEVATION_PROPERTY).trim()
+      || DEFAULT_CONSTRUCTION_SEQUENCE_ELEVATION_PROPERTY,
     codeFormat: String(rawSettings.code_formaat || '{fase}.{bouwlaag}.{stap}').trim()
       || '{fase}.{bouwlaag}.{stap}',
     descriptionFormat: String(rawSettings.omschrijving_formaat || '{omschrijving}').trim()
@@ -2337,6 +2373,9 @@ function resolveConstructionSequenceAssignment({
     kind: 'mapped',
     code,
     description,
+    phaseCode: tokens.fase,
+    stepCode: tokens.stap,
+    roundedElevationMm,
     rule,
     sortKey: [
       rule.phaseId,
@@ -2520,6 +2559,12 @@ function serializeNominalValue(type, value) {
   }
 
   if (type === 'identifier') return `IFCIDENTIFIER(${encodeStepString(String(value))})`;
+  if (type === 'length') {
+    const numeric = Number(value);
+    return Number.isFinite(numeric)
+      ? `IFCLENGTHMEASURE(${formatNumber(numeric)})`
+      : `IFCLABEL(${encodeStepString(String(value))})`;
+  }
   if (type === 'text') return `IFCTEXT(${encodeStepString(String(value))})`;
   if (typeof value === 'number' && Number.isFinite(value)) return `IFCREAL(${formatNumber(value)})`;
   return `IFCLABEL(${encodeStepString(String(value))})`;

@@ -57,8 +57,9 @@ Onder het uploadvlak staat een tweede onderdeel met een herhalende animatie. De 
 3. Constructie
 4. Gevel
 5. Kozijn
-6. Dak
+6. Zadeldak
 
+De onderdelen gebruiken de groene, lime en oranje accentkleuren van de website. Bij ieder geplaatst onderdeel verschijnt een klein oplopend volgordenummer: `10`, `20`, `30`, `40`, `50` en `60`. De eerdere teksten en tijdlijn onder in de animatie zijn verwijderd. Zo laat de animatie zonder extra uitleg zien dat elementen een positie in de bouwvolgorde krijgen.
 
 De kaart staat op brede schermen links uitgelijnd met de titel `Breng je IFC model op orde`. De tekst ernaast bevat een rechtstreekse koppeling naar het onderdeel Bouwvolgorde in Geavanceerde instellingen. De knop `Meer informatie` opent direct de bestaande uitleg over de berekening van de bouwvolgorde. Bij een systeeminstelling voor minder beweging wordt de complete woning zonder animatie getoond.
 
@@ -126,12 +127,17 @@ Het onderdeel Bouwvolgorde toont in de geavanceerde instellingen direct een comp
 In de geavanceerde instellingen staat de optie `Voeg bouwvolgorde toe`. Deze optie staat standaard uit. Naast de titel staat een informatieknop. Die opent eerst alleen de compacte visuele uitleg waarin de NL-SfB code en de Z hoogte worden samengevoegd tot één bouwvolgordecode. In het onderdeel dat de code opdeelt kan vervolgens op `fase` worden geklikt. Pas dan verschijnt de actuele fasenindeling uit `bouwvolgorde_nlsfb.json`. Alle fasen staan standaard ingeklapt. Door één fase te openen worden de stappen van die fase in volgorde getoond, inclusief het codepatroon, de gekoppelde NL-SfB codes en de gebruikte bouwlaagselectie. Bij het openen van een andere fase wordt de vorige weer gesloten. Wanneer de JSON wordt aangepast, verandert dit overzicht automatisch mee. Alle regels in het korte volgordevoorbeeld hebben dezelfde weergave; er wordt geen willekeurige stap uitgelicht. De uitleg vermeldt ook dat code en omschrijving in het eigenschappen tabje en in de classificatie `Bouwvolgorde` worden geplaatst. De drie codeonderdelen `fase`, `Z in mm` en `stap` staan over de volledige breedte exact onder de donkergroene resultaatkaart.
 
 
-Wanneer de optie aan staat, krijgen geometrische IFC objecten twee extra eigenschappen in het gekozen eigenschappen tabje:
+Wanneer de optie aan staat, krijgen geometrische IFC objecten de volgende eigenschappen in het gekozen eigenschappen tabje:
 
 1. `Bouwvolgorde code`
 2. `Bouwvolgorde omschrijving`
+3. `Bouwvolgorde Fase`
+4. `Bouwvolgorde Verdiepingshoogte`
+5. `Bouwvolgorde Stap`
 
-Dezelfde informatie wordt als IFC classificatie toegevoegd met de naam `Bouwvolgorde`.
+`Bouwvolgorde Fase` en `Bouwvolgorde Stap` worden als nul-aangevulde identifiers opgeslagen, bijvoorbeeld `09` en `10`. `Bouwvolgorde Verdiepingshoogte` wordt als `IfcLengthMeasure` opgeslagen, zodat de waarde de lengte-eenheid van het IFC model volgt. De volledige bouwvolgordecode blijft de afgeronde hoogte in millimeters gebruiken. De drie losse waarden worden alleen toegevoegd wanneer een concrete bouwvolgorderegel is gevonden. Bij `XX` of `NM` worden geen fase, stap of verdiepingshoogte verzonnen.
+
+Dezelfde code en omschrijving worden als IFC classificatie toegevoegd met de naam `Bouwvolgorde`.
 
 De planning gebruikt uitsluitend:
 
@@ -198,16 +204,21 @@ Classificatiereferenties voor de bouwvolgorde worden in oplopende fase, Z hoogte
 
 In `bouwvolgorde_nlsfb.json` zijn onder meer deze instellingen aanpasbaar:
 
-1. `code_formaat`
-2. `omschrijving_formaat`
-3. `bouwlaag_afronding_mm`
-4. `bouwlaag_z_breedte`
-5. `bouwlaag_onbekend_code`
-6. `fase_id`
-7. `volgorde_nummer`
-8. `nlsfb_codes`
-9. `bouwlaag_selectie`
-10. `omschrijving`
+1. `eigenschap_code`
+2. `eigenschap_omschrijving`
+3. `eigenschap_fase`
+4. `eigenschap_stap`
+5. `eigenschap_verdiepingshoogte`
+6. `code_formaat`
+7. `omschrijving_formaat`
+8. `bouwlaag_afronding_mm`
+9. `bouwlaag_z_breedte`
+10. `bouwlaag_onbekend_code`
+11. `fase_id`
+12. `volgorde_nummer`
+13. `nlsfb_codes`
+14. `bouwlaag_selectie`
+15. `omschrijving`
 
 De standaard afronding is één millimeter. Door `bouwlaag_afronding_mm` bijvoorbeeld op `10` of `100` te zetten, kunnen kleine hoogteverschillen tussen discipline modellen worden geneutraliseerd. De bestandsnaam moet `bouwvolgorde_nlsfb.json` blijven.
 

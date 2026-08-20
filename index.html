@@ -199,25 +199,25 @@
 
         <section class="sequence-feature" aria-labelledby="homeSequenceTitle">
           <figure class="build-animation-card">
-            <svg class="build-animation" viewBox="0 0 520 360" role="img" aria-labelledby="buildAnimationTitle buildAnimationDescription">
+            <svg class="build-animation" viewBox="0 0 520 340" role="img" aria-labelledby="buildAnimationTitle buildAnimationDescription">
               <title id="buildAnimationTitle">Een gebouw wordt stap voor stap opgebouwd in hetzelfde perspectief als het IFC object</title>
-              <desc id="buildAnimationDescription">Fundering, vloer, constructie, gevel, kozijn en dak vallen achtereenvolgens op hun plek in een isometrisch perspectief.</desc>
+              <desc id="buildAnimationDescription">Fundering, vloer, constructie, gevel, kozijn en zadeldak vallen achtereenvolgens op hun plek. Ieder onderdeel krijgt een oplopend volgordenummer.</desc>
               <defs>
                 <linearGradient id="foundationFill" x1="0" y1="0" x2="1" y2="1">
-                  <stop offset="0" stop-color="#e4ece9"/>
-                  <stop offset="1" stop-color="#c8d8d2"/>
+                  <stop offset="0" stop-color="#f5f8f4"/>
+                  <stop offset="1" stop-color="#d6e4df"/>
                 </linearGradient>
                 <linearGradient id="floorFill" x1="0" y1="0" x2="1" y2="1">
-                  <stop offset="0" stop-color="#ffffff"/>
-                  <stop offset="1" stop-color="#edf3f0"/>
+                  <stop offset="0" stop-color="#fbfddd"/>
+                  <stop offset="1" stop-color="#e5ee9b"/>
                 </linearGradient>
                 <linearGradient id="roofLeftFill" x1="0" y1="0" x2="1" y2="1">
-                  <stop offset="0" stop-color="#0b7a6d"/>
-                  <stop offset="1" stop-color="#08685e"/>
+                  <stop offset="0" stop-color="#69b9ac"/>
+                  <stop offset="1" stop-color="#2f8f82"/>
                 </linearGradient>
                 <linearGradient id="roofRightFill" x1="0" y1="0" x2="1" y2="1">
-                  <stop offset="0" stop-color="#087064"/>
-                  <stop offset="1" stop-color="#07574f"/>
+                  <stop offset="0" stop-color="#d8ebe6"/>
+                  <stop offset="1" stop-color="#a8d2c8"/>
                 </linearGradient>
                 <filter id="buildSoftShadow" x="-30%" y="-30%" width="170%" height="180%">
                   <feDropShadow dx="0" dy="10" stdDeviation="8" flood-color="#173a34" flood-opacity="0.15"/>
@@ -225,13 +225,18 @@
               </defs>
 
               <g class="build-scene" filter="url(#buildSoftShadow)">
-                <ellipse class="build-ground-shadow" cx="205" cy="318" rx="151" ry="18"/>
+                <ellipse class="build-ground-shadow" cx="205" cy="316" rx="151" ry="18"/>
 
                 <g class="build-part build-part-foundation">
                   <path class="build-foundation-left" d="M80 232 205 295 205 309 80 246Z"/>
                   <path class="build-foundation-right" d="M205 295 330 232 330 246 205 309Z"/>
                   <path class="build-foundation-top" d="M205 170 330 232 205 295 80 232Z"/>
                   <path class="build-outline" d="M205 170 330 232 205 295 80 232 205 170Zm-125 62v14l125 63 125-63v-14"/>
+                  <g class="build-part-label" aria-hidden="true">
+                    <path d="M74 281 112 263"/>
+                    <rect x="30" y="269" width="44" height="24" rx="10"/>
+                    <text x="52" y="285">10</text>
+                  </g>
                 </g>
 
                 <g class="build-part build-part-floor">
@@ -239,12 +244,22 @@
                   <path class="build-floor-right" d="M205 269 315 214 315 223 205 278Z"/>
                   <path class="build-floor-top" d="M205 159 315 214 205 269 95 214Z"/>
                   <path class="build-outline" d="M205 159 315 214 205 269 95 214 205 159Zm-110 55v9l110 55 110-55v-9"/>
+                  <g class="build-part-label" aria-hidden="true">
+                    <path d="M335 259 300 244"/>
+                    <rect x="335" y="247" width="44" height="24" rx="10"/>
+                    <text x="357" y="263">20</text>
+                  </g>
                 </g>
 
                 <g class="build-part build-part-structure">
                   <path class="build-structure-line" d="M205 159V74M95 214V129M205 269V184M315 214V129"/>
                   <path class="build-structure-line build-structure-beam" d="M205 74 315 129 205 184 95 129 205 74ZM205 159 315 214 205 269 95 214 205 159Z"/>
                   <path class="build-structure-brace" d="M95 214 205 184M205 269 95 129M205 269 315 129M315 214 205 184"/>
+                  <g class="build-part-label" aria-hidden="true">
+                    <path d="M72 134 108 146"/>
+                    <rect x="28" y="122" width="44" height="24" rx="10"/>
+                    <text x="50" y="138">30</text>
+                  </g>
                 </g>
 
                 <g class="build-part build-part-facade">
@@ -253,45 +268,50 @@
                   <path class="build-facade-seam" d="M95 172.5 205 227.5 315 172.5"/>
                   <path class="build-window-opening" d="M232.5 194.1 284.2 168.2 284.2 207.3 232.5 233.2Z"/>
                   <path class="build-outline build-envelope-outline" d="M205 74 315 129V214L205 269 95 214V129L205 74Z"/>
+                  <g class="build-part-label" aria-hidden="true">
+                    <path d="M338 164 302 178"/>
+                    <rect x="338" y="152" width="44" height="24" rx="10"/>
+                    <text x="360" y="168">40</text>
+                  </g>
                 </g>
 
                 <g class="build-part build-part-window">
                   <path class="build-window-glass" d="M232.5 194.1 284.2 168.2 284.2 207.3 232.5 233.2Z"/>
                   <path class="build-window-frame" d="M232.5 194.1 284.2 168.2 284.2 207.3 232.5 233.2 232.5 194.1ZM258.4 181.1V220.2M232.5 213.6 284.2 187.7"/>
+                  <g class="build-part-label" aria-hidden="true">
+                    <path d="M338 229 281 207"/>
+                    <rect x="338" y="217" width="44" height="24" rx="10"/>
+                    <text x="360" y="233">50</text>
+                  </g>
                 </g>
 
                 <g class="build-part build-part-roof">
-                  <path class="build-roof-back-left" d="M205 28 205 68 84 129Z"/>
-                  <path class="build-roof-back-right" d="M205 28 326 129 205 68Z"/>
-                  <path class="build-roof-left" d="M205 28 84 129 205 190Z"/>
-                  <path class="build-roof-right" d="M205 28 205 190 326 129Z"/>
-                  <path class="build-roof-ridge" d="M205 28 84 129 205 190 326 129 205 28ZM205 68 84 129M205 68 326 129"/>
+                  <path class="build-roof-gable-back" d="M95 129 205 74 150 42Z"/>
+                  <path class="build-roof-gable-front" d="M205 184 315 129 260 97Z"/>
+                  <path class="build-roof-left" d="M88 128 150 42 260 97 205 190Z"/>
+                  <path class="build-roof-right" d="M150 42 205 68 322 126 260 97Z"/>
+                  <path class="build-roof-edge" d="M88 128 150 42 205 68 322 126M88 128 205 190 322 126M205 190 260 97"/>
+                  <path class="build-roof-ridge" d="M150 42 260 97"/>
+                  <g class="build-part-label" aria-hidden="true">
+                    <path d="M74 61 143 57"/>
+                    <rect x="30" y="49" width="44" height="24" rx="10"/>
+                    <text x="52" y="65">60</text>
+                  </g>
                 </g>
               </g>
 
               <g class="build-code-badge" aria-hidden="true">
-                <rect x="334" y="24" width="170" height="62" rx="12"/>
-                <text x="350" y="47" class="build-code-label">Bouwvolgorde</text>
-                <text x="350" y="71" class="build-code-value">09.003800.10</text>
-              </g>
-
-              <g class="build-stage-line" aria-hidden="true">
-                <path d="M60 342H460"/>
-                <circle class="build-stage-dot build-stage-dot-1" cx="60" cy="342" r="5"/>
-                <circle class="build-stage-dot build-stage-dot-2" cx="140" cy="342" r="5"/>
-                <circle class="build-stage-dot build-stage-dot-3" cx="220" cy="342" r="5"/>
-                <circle class="build-stage-dot build-stage-dot-4" cx="300" cy="342" r="5"/>
-                <circle class="build-stage-dot build-stage-dot-5" cx="380" cy="342" r="5"/>
-                <circle class="build-stage-dot build-stage-dot-6" cx="460" cy="342" r="5"/>
+                <rect x="344" y="24" width="160" height="62" rx="12"/>
+                <text x="360" y="47" class="build-code-label">Bouwvolgorde</text>
+                <text x="360" y="71" class="build-code-value">09.003800.10</text>
               </g>
             </svg>
-            <figcaption>Fundering · vloer · constructie · gevel · kozijn · dak</figcaption>
           </figure>
 
           <div class="sequence-feature-copy">
             <span class="eyebrow">Bouwvolgorde</span>
             <h2 id="homeSequenceTitle">Verrijk je model met een bouwvolgorde</h2>
-            <p>De app combineert NL-SfB Tabel 1 met de Z hoogte van de bouwlaag en voegt per element een code en omschrijving toe.</p>
+            <p>De app combineert NL-SfB Tabel 1 met de hoogte van de bouwlaag en voegt per element een code en omschrijving toe.</p>
             <p class="sequence-feature-note">
               Zet de bouwvolgorde aan bij
               <button class="text-button" id="homeConstructionSequenceSettingsButton" type="button">Geavanceerde instellingen</button>.
@@ -440,7 +460,7 @@
         <div>
           <span class="sequence-dialog-kicker">Bouwvolgorde</span>
           <h2 id="constructionSequenceInfoTitle">Zo ontstaat de code</h2>
-          <p id="constructionSequenceInfoDescription">Voegt een code en omschrijving toe aan jouw eigenschappen tabje én als classificatie.</p>
+          <p id="constructionSequenceInfoDescription">Voegt code, omschrijving, fase, verdiepingshoogte en stap toe aan jouw eigenschappen tabje. De code wordt ook als classificatie toegevoegd.</p>
         </div>
         <button class="dialog-close-button" id="closeConstructionSequenceInfoButton" type="button" aria-label="Sluiten">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>

@@ -663,7 +663,7 @@
     }
 
     function validateSettings(value) {
-      const usedNames = new Set(['nl-sfb code', 'nl-sfb omschrijving', 'bouwvolgorde code', 'bouwvolgorde omschrijving']);
+      const usedNames = new Set(['nl-sfb code', 'nl-sfb omschrijving', 'bouwvolgorde code', 'bouwvolgorde omschrijving', 'bouwvolgorde fase', 'bouwvolgorde stap', 'bouwvolgorde verdiepingshoogte']);
 
       for (const attribute of value.attributes) {
         if (!attribute.outputName) throw new Error('Geef iedere vaste IFC waarde een naam.');

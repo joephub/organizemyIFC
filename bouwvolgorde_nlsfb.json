@@ -2,11 +2,14 @@
   "project_metadata": {
     "description": "Standaard bouwvolgorde uitsluitend op basis van NL-SfB tabel 1 coderingen en de afgeronde Z hoogte van bouwlagen ten behoeve van 4D planning.",
     "author": "Organize my IFC",
-    "version": "6.0"
+    "version": "7.0"
   },
   "instellingen": {
     "eigenschap_code": "Bouwvolgorde code",
     "eigenschap_omschrijving": "Bouwvolgorde omschrijving",
+    "eigenschap_fase": "Bouwvolgorde Fase",
+    "eigenschap_stap": "Bouwvolgorde Stap",
+    "eigenschap_verdiepingshoogte": "Bouwvolgorde Verdiepingshoogte",
     "code_formaat": "{fase}.{bouwlaag_z}.{stap}",
     "omschrijving_formaat": "{omschrijving}",
     "bouwlaag_afronding_mm": 1,
