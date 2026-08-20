@@ -1,10 +1,11 @@
 'use strict';
 
-    const STORAGE_KEY = 'organize-my-ifc-settings-v5';
-    const PREVIOUS_STORAGE_KEYS = ['organize-my-ifc-settings-v4', 'organize-my-ifc-settings-v3', 'organize-my-ifc-settings-v2', 'organize-my-ifc-settings-v1'];
+    const STORAGE_KEY = 'organize-my-ifc-settings-v6';
+    const PREVIOUS_STORAGE_KEYS = ['organize-my-ifc-settings-v5', 'organize-my-ifc-settings-v4', 'organize-my-ifc-settings-v3', 'organize-my-ifc-settings-v2', 'organize-my-ifc-settings-v1'];
     const NLSFB_URL = './nlsfb2021.json';
     const CONSTRUCTION_SEQUENCE_URL = './bouwvolgorde_nlsfb.json';
     const DEFAULT_CLASSIFICATION_ALIASES = ['Uniformat', 'Uniformat Classification'];
+    const DEFAULT_PROPERTY_PSET_PATTERN = 'Pset_.*Common';
 
     const ATTRIBUTE_DEFINITIONS = [
       { key: 'storey', label: 'Bouwlaag', source: 'Bouwlaag van het element', outputName: 'Bouwlaag' },
@@ -13,6 +14,7 @@
       { key: 'ifcEntity', label: 'IFC entiteit', source: 'Naam van de IFC entiteit, bijvoorbeeld IfcWall', outputName: 'IFC entiteit' },
       { key: 'predefinedType', label: 'IFC PredefinedType', source: 'Vooraf gedefinieerd type uit het IFC schema', outputName: 'IFC PredefinedType' },
       { key: 'objectType', label: 'Objecttype', source: 'Objecttype van het element', outputName: 'Objecttype' },
+      { key: 'materials', label: 'Materiaal', source: 'Alle gekoppelde materiaalnamen', outputName: 'Materiaal' },
     ];
 
     const LEGACY_DEFAULT_ATTRIBUTE_NAMES = {
@@ -21,11 +23,11 @@
     };
 
     const DEFAULT_COMMON_PROPERTY_MAPPINGS = [
-      { sourceName: 'IsExternal', outputName: 'Buiten' },
-      { sourceName: 'LoadBearing', outputName: 'Dragend' },
-      { sourceName: 'FireRating', outputName: 'WBDBO' },
-      { sourceName: 'AcousticRating', outputName: 'Geluidwerendheid' },
-      { sourceName: 'ThermalTransmittance', outputName: 'Warmtedoorgangscoëfficiënt' },
+      { psetPattern: DEFAULT_PROPERTY_PSET_PATTERN, sourceName: 'IsExternal', outputName: 'Buiten' },
+      { psetPattern: DEFAULT_PROPERTY_PSET_PATTERN, sourceName: 'LoadBearing', outputName: 'Dragend' },
+      { psetPattern: DEFAULT_PROPERTY_PSET_PATTERN, sourceName: 'FireRating', outputName: 'WBDBO' },
+      { psetPattern: DEFAULT_PROPERTY_PSET_PATTERN, sourceName: 'AcousticRating', outputName: 'Geluidwerendheid' },
+      { psetPattern: DEFAULT_PROPERTY_PSET_PATTERN, sourceName: 'ThermalTransmittance', outputName: 'Warmtedoorgangscoëfficiënt' },
     ];
 
     const DEFAULT_SETTINGS = {
@@ -130,7 +132,7 @@
       });
       elements.restoreSettingsButton.addEventListener('click', resetSettings);
       elements.addPropertyMappingButton.addEventListener('click', () => {
-        appendPropertyMappingRow({ sourceName: '', outputName: '' }, true);
+        appendPropertyMappingRow({ psetPattern: DEFAULT_PROPERTY_PSET_PATTERN, sourceName: '', outputName: '' }, true);
       });
       elements.addClassificationAliasButton.addEventListener('click', () => {
         appendClassificationAliasRow('', true);
@@ -293,6 +295,9 @@
       if (Array.isArray(stored.commonPropertyMappings)) {
         const storedMappings = stored.commonPropertyMappings
           .map((mapping) => ({
+            psetPattern: mapping && mapping.psetPattern != null
+              ? String(mapping.psetPattern)
+              : DEFAULT_PROPERTY_PSET_PATTERN,
             sourceName: String(mapping && mapping.sourceName || ''),
             outputName: String(mapping && mapping.outputName || ''),
           }))
@@ -315,12 +320,14 @@
 
     function migrateCommonPropertyMappings(storedMappings) {
       const migrated = storedMappings.map((mapping) => {
+        const psetPattern = String(mapping.psetPattern || DEFAULT_PROPERTY_PSET_PATTERN).trim()
+          || DEFAULT_PROPERTY_PSET_PATTERN;
         const sourceName = String(mapping.sourceName || '').trim();
         const outputName = String(mapping.outputName || '').trim();
         if (sourceName.toLowerCase() === 'firerating' && outputName === 'Brandwerendheid') {
-          return { sourceName, outputName: 'WBDBO' };
+          return { psetPattern, sourceName, outputName: 'WBDBO' };
         }
-        return { sourceName, outputName };
+        return { psetPattern, sourceName, outputName };
       });
 
       const presentSources = new Set(migrated.map((mapping) => mapping.sourceName.toLowerCase()));
@@ -375,6 +382,10 @@
       row.setAttribute('data-property-mapping-row', '');
       row.innerHTML = `
         <div class="compact-field">
+          <label>Pset in het model</label>
+          <input class="input" type="text" maxlength="255" spellcheck="false" data-mapping-pset value="${escapeHtml(mapping.psetPattern || DEFAULT_PROPERTY_PSET_PATTERN)}" placeholder="Pset_.*Common">
+        </div>
+        <div class="compact-field">
           <label>Eigenschap in het model</label>
           <input class="input" type="text" maxlength="255" spellcheck="false" data-mapping-source value="${escapeHtml(mapping.sourceName || '')}" placeholder="bijvoorbeeld AcousticRating">
         </div>
@@ -390,7 +401,7 @@
       `;
       elements.propertyMappingList.appendChild(row);
       if (focusSource) {
-        const input = row.querySelector('[data-mapping-source]');
+        const input = row.querySelector('[data-mapping-pset]');
         if (input) input.focus();
       }
     }
@@ -438,6 +449,7 @@
 
       const commonPropertyMappings = Array.from(elements.propertyMappingList.querySelectorAll('[data-property-mapping-row]'))
         .map((row) => ({
+          psetPattern: row.querySelector('[data-mapping-pset]').value.trim(),
           sourceName: row.querySelector('[data-mapping-source]').value.trim(),
           outputName: row.querySelector('[data-mapping-output]').value.trim(),
         }))
@@ -467,12 +479,28 @@
       }
 
       for (const mapping of value.commonPropertyMappings) {
-        if (!mapping.sourceName || !mapping.outputName) {
-          throw new Error('Vul bij iedere regel de eigenschap en de naam in.');
+        if (!mapping.psetPattern || !mapping.sourceName || !mapping.outputName) {
+          throw new Error('Vul bij iedere regel de Pset, eigenschap en naam in.');
         }
+        compilePsetWildcard(mapping.psetPattern);
         const normalized = mapping.outputName.toLowerCase();
         if (usedNames.has(normalized)) throw new Error(`De naam “${mapping.outputName}” wordt meer dan één keer gebruikt.`);
         usedNames.add(normalized);
+      }
+    }
+
+    function compilePsetWildcard(pattern) {
+      const value = String(pattern || '').trim();
+      if (!value) throw new Error('Vul bij iedere regel een Pset in.');
+      const wildcardToken = '\u0000';
+      const escaped = value
+        .replace(/\.\*/g, wildcardToken)
+        .replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+        .replace(new RegExp(wildcardToken, 'g'), '.*');
+      try {
+        return new RegExp(`^(?:${escaped})$`, 'i');
+      } catch (error) {
+        throw new Error(`Het Pset patroon “${value}” is ongeldig.`);
       }
     }
 

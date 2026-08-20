@@ -58,9 +58,9 @@ Ondersteunde STEP IFC schema's:
 - IFC 4
 - IFC 4x3
 
-Voor het eigenschappen tabje neemt de tool bestaande IFC waarden over. Standaard eigenschappen worden uitsluitend gelezen uit IFC PropertySets waarvan de naam past bij `Pset_.*Common`. De enige automatische aanvulling is de afgesproken NL-SfB code `XX` voor geometrische objecten zonder herkenbare NL-SfB codering.
+Voor het eigenschappen tabje neemt de tool bestaande IFC waarden over. Bij iedere ingestelde eigenschap kan afzonderlijk worden opgegeven uit welk IFC PropertySet de waarde moet komen. In de Pset naam mag `.*` als wildcard worden gebruikt, bijvoorbeeld `Pset_.*Common`. De enige automatische aanvulling is de afgesproken NL-SfB code `XX` voor geometrische objecten zonder herkenbare NL-SfB codering.
 
-De standaardkoppelingen zijn:
+De standaardkoppelingen gebruiken allemaal het Pset patroon `Pset_.*Common`:
 
 - `IsExternal` naar `Buiten`
 - `LoadBearing` naar `Dragend`
@@ -68,9 +68,9 @@ De standaardkoppelingen zijn:
 - `AcousticRating` naar `Geluidwerendheid`
 - `ThermalTransmittance` naar `Warmtedoorgangscoëfficiënt`
 
-Een koppeling wordt alleen toegevoegd wanneer de bronwaarde werkelijk op het IFC object aanwezig is.
+Een koppeling wordt alleen toegevoegd wanneer de bronwaarde werkelijk op het IFC object aanwezig is. Via het plusje kunnen extra regels met een eigen Pset patroon, broneigenschap en doelnaam worden toegevoegd. Een exact Pset kan rechtstreeks worden ingevuld en `.*` kan een variabel deel van de naam vervangen.
 
-In de geavanceerde instellingen worden de vaste IFC velden aangeduid met hun herkenbare termen, waaronder `IFC entiteit` en `IFC PredefinedType`.
+In de geavanceerde instellingen worden de vaste IFC velden aangeduid met hun herkenbare termen, waaronder `IFC entiteit`, `IFC PredefinedType` en `Materiaal`. Voor `Materiaal` verzamelt de app alle namen van gekoppelde `IfcMaterial` entiteiten. Meerdere namen worden uniek en kommagescheiden opgenomen. Materialen die via het gekoppelde IFC type zijn toegewezen worden eveneens meegenomen. Zonder gekoppelde materiaalnaam wordt de eigenschap niet toegevoegd.
 
 De standaard herkenbare classificatienamen zijn:
 

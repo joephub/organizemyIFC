@@ -2,7 +2,7 @@
 
 const MAX_WARNINGS = 250;
 const APP_NAME = 'Organize my IFC';
-const APP_VERSION = '14';
+const APP_VERSION = '15';
 const PROCESSING_RECORD_PSET_NAME = 'Cpset_OrganizeMyIFC';
 const CLASSIFICATION_BATCH_SIZE = 4000;
 const CANONICAL_CLASSIFICATION_NAME = 'NL-SfB tabel 1';
@@ -19,6 +19,7 @@ const DEFAULT_CONSTRUCTION_SEQUENCE_MISSING_CODE = 'XX';
 const DEFAULT_CONSTRUCTION_SEQUENCE_MISSING_DESCRIPTION = 'Geen bouwvolgorde omdat NL-SfB code ontbreekt';
 const DEFAULT_CONSTRUCTION_SEQUENCE_UNMAPPED_CODE = 'NM';
 const DEFAULT_CONSTRUCTION_SEQUENCE_UNMAPPED_DESCRIPTION = 'Geen bouwvolgorde ingesteld voor deze NL-SfB code';
+const DEFAULT_PROPERTY_PSET_PATTERN = 'Pset_.*Common';
 
 self.onmessage = async (event) => {
   const message = event.data || {};
@@ -100,7 +101,6 @@ function processIfc(text, config, nlsfbEntries, constructionSequenceConfig) {
   const targetPsetName = normalizeTargetPsetName(config.targetPsetName || 'Cpset_');
   const attributeConfig = normalizeAttributeConfig(config.attributes || config.fields || []);
   const commonPropertyMappings = normalizeCommonPropertyMappings(config.commonPropertyMappings, config);
-  const commonPsetRegex = compileCommonPsetRegex('^Pset_.*Common$');
   const classificationAliases = normalizeAliases(config.classificationAliases || []);
   const canonicalClassificationName = CANONICAL_CLASSIFICATION_NAME;
   const twoDigitClassificationName = TWO_DIGIT_CLASSIFICATION_NAME;
@@ -173,7 +173,11 @@ function processIfc(text, config, nlsfbEntries, constructionSequenceConfig) {
     sourceFile: config.sourceFileName || '',
     targetPsetName,
     settings: {
-      commonPsetPattern: commonPsetRegex.source,
+      propertyMappings: commonPropertyMappings.map((mapping) => ({
+        psetPattern: mapping.psetPattern,
+        sourceName: mapping.sourceName,
+        outputName: mapping.outputName,
+      })),
       classificationAliases,
       canonicalClassificationName,
       twoDigitClassificationName,
@@ -226,13 +230,12 @@ function processIfc(text, config, nlsfbEntries, constructionSequenceConfig) {
     const storeyName = storeyId ? getStringArg(entities.get(storeyId), 2) : null;
     if (!storeyId) summary.elementsWithoutStorey += 1;
 
-    const commonProperties = collectCommonProperties(
+    const mappedPropertyValues = collectMappedPropertyValues(
       expressId,
       typeId,
       index,
       entities,
-      commonPsetRegex,
-      config,
+      commonPropertyMappings,
     );
 
     const classificationResult = findMatchingClassification(
@@ -330,6 +333,7 @@ function processIfc(text, config, nlsfbEntries, constructionSequenceConfig) {
       ifcEntity: formatIfcEntityName(entity.type),
       predefinedType: extractPredefinedType(entity, typeEntity, schema.key),
       objectType: getStringArg(entity, 4),
+      materials: collectMaterialNames(expressId, typeId, index, entities),
     };
 
     if (twoDigitCode) {
@@ -389,11 +393,12 @@ function processIfc(text, config, nlsfbEntries, constructionSequenceConfig) {
       });
     }
 
-    for (const mapping of commonPropertyMappings) {
+    for (let mappingIndex = 0; mappingIndex < commonPropertyMappings.length; mappingIndex += 1) {
+      const mapping = commonPropertyMappings[mappingIndex];
       propertyCandidates.push({
         name: mapping.outputName,
         type: mapping.type,
-        value: getMapValue(commonProperties, normalizeKey(mapping.sourceName)),
+        value: mappedPropertyValues[mappingIndex],
       });
     }
 
@@ -1012,6 +1017,8 @@ function buildIndex(entityList, entities, schemaKey, config, addWarning) {
   const typeByObject = new Map();
   const directPsetsByObject = new Map();
   const directClassificationsByObject = new Map();
+  const directMaterialsByObject = new Map();
+  const materialNamesBySelection = new Map();
   const psetProperties = new Map();
   const psetNameById = new Map();
   const classificationRefs = new Map();
@@ -1110,6 +1117,18 @@ function buildIndex(entityList, entities, schemaKey, config, addWarning) {
         break;
       }
 
+      case 'IFCRELASSOCIATESMATERIAL': {
+        const objects = getRefIds(entity.args[4]);
+        const materialId = getSingleRef(entity.args[5]);
+        if (materialId) {
+          for (const objectId of objects) {
+            if (!directMaterialsByObject.has(objectId)) directMaterialsByObject.set(objectId, []);
+            directMaterialsByObject.get(objectId).push(materialId);
+          }
+        }
+        break;
+      }
+
       default:
         break;
     }
@@ -1148,6 +1167,8 @@ function buildIndex(entityList, entities, schemaKey, config, addWarning) {
     typeByObject,
     directPsetsByObject,
     directClassificationsByObject,
+    directMaterialsByObject,
+    materialNamesBySelection,
     psetProperties,
     psetNameById,
     classificationRefs,
@@ -1624,8 +1645,8 @@ function numericNodeValue(node) {
   return null;
 }
 
-function collectCommonProperties(objectId, typeId, index, entities, psetRegex, config) {
-  const result = new Map();
+function collectMappedPropertyValues(objectId, typeId, index, entities, mappings) {
+  const result = new Array(mappings.length).fill(null);
   const sourceIds = [];
   if (typeId) sourceIds.push(typeId);
   sourceIds.push(objectId);
@@ -1634,9 +1655,15 @@ function collectCommonProperties(objectId, typeId, index, entities, psetRegex, c
     const psetIds = index.directPsetsByObject.get(sourceId) || [];
     for (const psetId of psetIds) {
       const psetName = index.psetNameById.get(psetId) || '';
-      psetRegex.lastIndex = 0;
-      if (!psetRegex.test(psetName)) continue;
+      const matchingMappings = [];
+      for (let mappingIndex = 0; mappingIndex < mappings.length; mappingIndex += 1) {
+        const mapping = mappings[mappingIndex];
+        mapping.psetRegex.lastIndex = 0;
+        if (mapping.psetRegex.test(psetName)) matchingMappings.push(mappingIndex);
+      }
+      if (!matchingMappings.length) continue;
 
+      const propertyValues = new Map();
       const propertyIds = index.psetProperties.get(psetId) || [];
       for (const propertyId of propertyIds) {
         const property = entities.get(propertyId);
@@ -1645,12 +1672,82 @@ function collectCommonProperties(objectId, typeId, index, entities, psetRegex, c
         if (!propertyName) continue;
         const propertyValue = extractPropertyValue(property, entities);
         if (propertyValue == null) continue;
-        result.set(normalizeKey(propertyName), propertyValue);
+        propertyValues.set(normalizeKey(propertyName), propertyValue);
+      }
+
+      for (const mappingIndex of matchingMappings) {
+        const mapping = mappings[mappingIndex];
+        const value = getMapValue(propertyValues, normalizeKey(mapping.sourceName));
+        if (value != null) result[mappingIndex] = value;
       }
     }
   }
 
   return result;
+}
+
+function collectMaterialNames(objectId, typeId, index, entities) {
+  const names = [];
+  const seen = new Set();
+  const sourceIds = [];
+  if (typeId) sourceIds.push(typeId);
+  sourceIds.push(objectId);
+
+  for (const sourceId of sourceIds) {
+    const materialIds = index.directMaterialsByObject.get(sourceId) || [];
+    for (const materialId of materialIds) {
+      const resolvedNames = resolveMaterialNames(materialId, index, entities, new Set());
+      for (const name of resolvedNames) {
+        const cleanName = String(name || '').trim();
+        const key = cleanName.toLocaleLowerCase('nl-NL');
+        if (!cleanName || seen.has(key)) continue;
+        seen.add(key);
+        names.push(cleanName);
+      }
+    }
+  }
+
+  return names.length ? names.join(', ') : null;
+}
+
+function resolveMaterialNames(materialId, index, entities, activeIds) {
+  if (!materialId) return [];
+  if (index.materialNamesBySelection.has(materialId)) {
+    return index.materialNamesBySelection.get(materialId);
+  }
+  if (activeIds.has(materialId)) return [];
+
+  const entity = entities.get(materialId);
+  if (!entity || !entity.type.startsWith('IFCMATERIAL')) return [];
+
+  activeIds.add(materialId);
+  let names = [];
+  if (entity.type === 'IFCMATERIAL') {
+    const name = getStringArg(entity, 0);
+    if (name) names.push(name);
+  } else {
+    for (const arg of entity.args) {
+      for (const referencedId of getRefIds(arg)) {
+        const referencedEntity = entities.get(referencedId);
+        if (!referencedEntity || !referencedEntity.type.startsWith('IFCMATERIAL')) continue;
+        names.push(...resolveMaterialNames(referencedId, index, entities, activeIds));
+      }
+    }
+  }
+  activeIds.delete(materialId);
+
+  const uniqueNames = [];
+  const seen = new Set();
+  for (const name of names) {
+    const cleanName = String(name || '').trim();
+    const key = cleanName.toLocaleLowerCase('nl-NL');
+    if (!cleanName || seen.has(key)) continue;
+    seen.add(key);
+    uniqueNames.push(cleanName);
+  }
+
+  index.materialNamesBySelection.set(materialId, uniqueNames);
+  return uniqueNames;
 }
 
 function extractPropertyValue(property, entities) {
@@ -2313,6 +2410,7 @@ function normalizeAttributeConfig(attributes) {
     ['ifcEntity', 'IFC entiteit', 'label'],
     ['predefinedType', 'IFC PredefinedType', 'label'],
     ['objectType', 'Objecttype', 'label'],
+    ['materials', 'Materiaal', 'label'],
   ];
 
   const supplied = new Map();
@@ -2333,22 +2431,26 @@ function normalizeAttributeConfig(attributes) {
 
 function normalizeCommonPropertyMappings(mappings, legacyConfig) {
   const defaults = [
-    { sourceName: legacyConfig.isExternalPropertyName || 'IsExternal', outputName: 'Buiten' },
-    { sourceName: legacyConfig.loadBearingPropertyName || 'LoadBearing', outputName: 'Dragend' },
-    { sourceName: legacyConfig.fireRatingPropertyName || 'FireRating', outputName: 'WBDBO' },
-    { sourceName: 'AcousticRating', outputName: 'Geluidwerendheid' },
-    { sourceName: 'ThermalTransmittance', outputName: 'Warmtedoorgangscoëfficiënt' },
+    { psetPattern: DEFAULT_PROPERTY_PSET_PATTERN, sourceName: legacyConfig.isExternalPropertyName || 'IsExternal', outputName: 'Buiten' },
+    { psetPattern: DEFAULT_PROPERTY_PSET_PATTERN, sourceName: legacyConfig.loadBearingPropertyName || 'LoadBearing', outputName: 'Dragend' },
+    { psetPattern: DEFAULT_PROPERTY_PSET_PATTERN, sourceName: legacyConfig.fireRatingPropertyName || 'FireRating', outputName: 'WBDBO' },
+    { psetPattern: DEFAULT_PROPERTY_PSET_PATTERN, sourceName: 'AcousticRating', outputName: 'Geluidwerendheid' },
+    { psetPattern: DEFAULT_PROPERTY_PSET_PATTERN, sourceName: 'ThermalTransmittance', outputName: 'Warmtedoorgangscoëfficiënt' },
   ];
 
   const source = Array.isArray(mappings) ? mappings : defaults;
   return source
     .map((mapping) => ({
+      psetPattern: String(mapping && mapping.psetPattern != null
+        ? mapping.psetPattern
+        : DEFAULT_PROPERTY_PSET_PATTERN).trim(),
       sourceName: String(mapping && mapping.sourceName || '').trim(),
       outputName: String(mapping && mapping.outputName || '').trim(),
     }))
-    .filter((mapping) => mapping.sourceName && mapping.outputName)
+    .filter((mapping) => mapping.psetPattern && mapping.sourceName && mapping.outputName)
     .map((mapping) => ({
       ...mapping,
+      psetRegex: compilePsetWildcard(mapping.psetPattern),
       type: ['isexternal', 'loadbearing'].includes(normalizeKey(mapping.sourceName)) ? 'boolean' : 'auto',
     }));
 }
@@ -2458,11 +2560,18 @@ function hasDirectPsetNamed(objectId, name, index, entities) {
   return psetIds.some((psetId) => normalizeKey(index.psetNameById.get(psetId) || getStringArg(entities.get(psetId), 2)) === normalizedTarget);
 }
 
-function compileCommonPsetRegex(pattern) {
+function compilePsetWildcard(pattern) {
+  const value = String(pattern || '').trim();
+  if (!value) throw new Error('Een Pset patroon ontbreekt.');
+  const wildcardToken = '\u0000';
+  const escaped = value
+    .replace(/\.\*/g, wildcardToken)
+    .replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    .replace(new RegExp(wildcardToken, 'g'), '.*');
   try {
-    return new RegExp(String(pattern || '^Pset_.*Common$'), 'i');
+    return new RegExp(`^(?:${escaped})$`, 'i');
   } catch (error) {
-    throw new Error(`Ongeldig Common Pset patroon: ${error.message}`);
+    throw new Error(`Ongeldig Pset patroon: ${value}`);
   }
 }
 

@@ -161,7 +161,7 @@ summary { cursor: pointer; color: var(--muted); font-size: 13px; font-weight: 70
 .attribute-list, .property-mapping-list, .classification-alias-list { display: grid; gap: 10px; }
 .attribute-row, .property-mapping-row, .classification-alias-row { display: grid; align-items: end; gap: 12px; border: 1px solid var(--line); border-radius: 11px 11px 11px 3px; background: var(--surface-muted); padding: 12px; }
 .attribute-row { grid-template-columns: minmax(180px, .9fr) minmax(220px, 1.1fr); }
-.property-mapping-row { grid-template-columns: minmax(180px, 1fr) minmax(180px, 1fr) auto; }
+.property-mapping-row { grid-template-columns: minmax(180px, .95fr) minmax(170px, .85fr) minmax(180px, 1fr) auto; }
 .classification-alias-row { grid-template-columns: minmax(220px, 1fr) auto; }
 .compact-field label { display: block; margin-bottom: 5px; color: var(--muted); font-size: 10px; font-weight: 780; letter-spacing: .04em; text-transform: uppercase; }
 .compact-field .input { width: 100%; }
