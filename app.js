@@ -41,7 +41,6 @@
       mainView: document.getElementById('mainView'),
       settingsView: document.getElementById('settingsView'),
       openSettingsButton: document.getElementById('openSettingsButton'),
-      homeConstructionSequenceInfoButton: document.getElementById('homeConstructionSequenceInfoButton'),
       homeConstructionSequenceSettingsButton: document.getElementById('homeConstructionSequenceSettingsButton'),
       backButton: document.getElementById('backButton'),
       restoreSettingsButton: document.getElementById('restoreSettingsButton'),
@@ -137,7 +136,6 @@
         renderSettings(settings);
         showView('settings');
       });
-      elements.homeConstructionSequenceInfoButton.addEventListener('click', openConstructionSequenceInfo);
       elements.homeConstructionSequenceSettingsButton.addEventListener('click', () => {
         renderSettings(settings);
         showView('settings');

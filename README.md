@@ -2,11 +2,11 @@
 
 Een statische webapp die aanwezige IFC informatie bundelt in één nieuw eigenschappen tabje. Eén of meer IFC modellen kunnen in dezelfde verwerking worden geselecteerd. De verwerking gebeurt volledig in de browser.
 
-## Versie 26
+## Versie 29
 
-De bouwvolgordeanimatie toont nu afzonderlijk funderingsstroken, een vloer, de draagconstructie, een constructieve daklaag, de gevel met kozijn en als laatste de dakpannen. De schaduw onder het gebouw is verwijderd en de dakvlakken gebruiken één heldere contour.
+De knop `Meer informatie` is van de bouwvolgordemodule op het hoofdscherm verwijderd. De uitgebreide uitleg blijft beschikbaar via de informatieknop bij `Bouwvolgorde` in Geavanceerde instellingen.
 
-Het uploadgedeelte staat op brede schermen compacter naast de invoer voor het eigenschappen tabje. Daardoor zijn de hoofdfunctie en de bouwvolgordeuitleg op een gangbaar desktopscherm direct samen zichtbaar.
+De animatie, indeling en IFC verwerking zijn inhoudelijk niet gewijzigd.
 
 ## Direct op GitHub Pages plaatsen
 
@@ -68,7 +68,11 @@ Onder het uploadvlak staat een tweede onderdeel met een herhalende animatie. De 
 
 De onderdelen gebruiken de groene, lime en oranje accentkleuren van de website. Bij ieder geplaatst onderdeel verschijnt een klein oplopend volgordenummer: `10`, `20`, `30`, `40`, `50`, `60` en `70`. De eerdere teksten en tijdlijn onder in de animatie zijn verwijderd. Zo laat de animatie zonder extra uitleg zien dat elementen een positie in de bouwvolgorde krijgen.
 
-De kaart staat op brede schermen links uitgelijnd met de titel `Breng je IFC model op orde`. De tekst ernaast bevat een rechtstreekse koppeling naar het onderdeel Bouwvolgorde in Geavanceerde instellingen. De knop `Meer informatie` opent direct de bestaande uitleg over de berekening van de bouwvolgorde. Bij een systeeminstelling voor minder beweging wordt de complete woning zonder animatie getoond.
+De kaart staat op brede schermen links uitgelijnd met de titel `Breng je IFC model op orde`. De tekst ernaast bevat een rechtstreekse koppeling naar het onderdeel Bouwvolgorde in Geavanceerde instellingen. De uitgebreide uitleg is beschikbaar via de informatieknop in dat instellingenonderdeel. Bij een systeeminstelling voor minder beweging wordt de complete woning zonder animatie getoond.
+
+### Rustigere afstand op het hoofdscherm
+
+De uploadkaart is op brede schermen compacter gemaakt. Het invoerveld en de knop staan naast elkaar, terwijl boven en onder de kaart extra witruimte is toegevoegd. Daardoor blijven de drie hoofddelen duidelijk van elkaar gescheiden zonder dat de pagina merkbaar langer wordt.
 
 ## Gebruik
 
