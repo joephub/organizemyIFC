@@ -333,9 +333,13 @@
       </div>
 
       <div class="sequence-code-key" aria-label="Opbouw van de bouwvolgordecode">
-        <div><strong>09</strong><span>fase</span></div>
-        <div><strong>003800</strong><span>Z in mm</span></div>
-        <div><strong>10</strong><span>stap</span></div>
+        <button class="sequence-code-part sequence-code-part-action" id="constructionSequencePhaseToggle" type="button" aria-expanded="false" aria-controls="constructionSequencePhaseCatalog" title="Bekijk alle fasen">
+          <strong>09</strong>
+          <span>fase</span>
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m5 7.5 5 5 5-5"/></svg>
+        </button>
+        <div class="sequence-code-part"><strong>003800</strong><span>Z in mm</span></div>
+        <div class="sequence-code-part"><strong>10</strong><span>stap</span></div>
       </div>
 
       <div class="sequence-order-example">
@@ -344,25 +348,21 @@
           <div class="sequence-order-item"><span>02.003800.00</span><strong>Vloerconstructie</strong></div>
           <div class="sequence-order-item"><span>05.003800.10</span><strong>Massieve binnenwanden</strong></div>
           <div class="sequence-order-item"><span>08.003800.10</span><strong>Vloerafwerklagen</strong></div>
-          <div class="sequence-order-item is-emphasized"><span>09.003800.10</span><strong>Vaste systeemwanden</strong></div>
+          <div class="sequence-order-item"><span>09.003800.10</span><strong>Vaste systeemwanden</strong></div>
           <div class="sequence-order-item"><span>11.003800.10</span><strong>Definitieve vloerafwerkingen</strong></div>
         </div>
       </div>
 
-      <section class="sequence-phase-catalog" aria-labelledby="constructionSequencePhaseCatalogTitle">
+      <section class="sequence-phase-catalog" id="constructionSequencePhaseCatalog" aria-labelledby="constructionSequencePhaseCatalogTitle" hidden>
         <div class="sequence-catalog-head">
           <div>
-            <span class="sequence-dialog-kicker">Volledige indeling</span>
-            <h3 id="constructionSequencePhaseCatalogTitle">Alle fasen en stappen</h3>
-            <p><span id="constructionSequenceOverviewCount">Bouwvolgorde laden…</span> · rechtstreeks uit <code>bouwvolgorde_nlsfb.json</code></p>
-          </div>
-          <div class="sequence-catalog-actions" aria-label="Fasen uitklappen of inklappen">
-            <button class="sequence-catalog-action" id="expandConstructionSequencePhasesButton" type="button">Alles openen</button>
-            <button class="sequence-catalog-action" id="collapseConstructionSequencePhasesButton" type="button">Alles sluiten</button>
+            <span class="sequence-dialog-kicker">Fasen</span>
+            <h3 id="constructionSequencePhaseCatalogTitle">Kies een fase</h3>
+            <p>De eerste twee cijfers bepalen de hoofdvolgorde. Klik een fase om de stappen te zien.</p>
+            <p class="sequence-catalog-count"><span id="constructionSequenceOverviewCount">Bouwvolgorde laden…</span> · uit <code>bouwvolgorde_nlsfb.json</code></p>
           </div>
         </div>
 
-        <nav class="sequence-phase-rail" id="constructionSequencePhaseRail" aria-label="Planningfasen"></nav>
         <div class="sequence-phase-list" id="constructionSequencePhaseList" aria-live="polite">
           <p class="sequence-overview-loading">Bouwvolgorde laden…</p>
         </div>

@@ -52,11 +52,10 @@
       constructionSequenceInfoButton: document.getElementById('constructionSequenceInfoButton'),
       constructionSequenceInfoDialog: document.getElementById('constructionSequenceInfoDialog'),
       closeConstructionSequenceInfoButton: document.getElementById('closeConstructionSequenceInfoButton'),
+      constructionSequencePhaseToggle: document.getElementById('constructionSequencePhaseToggle'),
+      constructionSequencePhaseCatalog: document.getElementById('constructionSequencePhaseCatalog'),
       constructionSequenceOverviewCount: document.getElementById('constructionSequenceOverviewCount'),
-      constructionSequencePhaseRail: document.getElementById('constructionSequencePhaseRail'),
       constructionSequencePhaseList: document.getElementById('constructionSequencePhaseList'),
-      expandConstructionSequencePhasesButton: document.getElementById('expandConstructionSequencePhasesButton'),
-      collapseConstructionSequencePhasesButton: document.getElementById('collapseConstructionSequencePhasesButton'),
       ifcFileInput: document.getElementById('ifcFileInput'),
       dropzone: document.getElementById('dropzone'),
       emptyFileState: document.getElementById('emptyFileState'),
@@ -177,20 +176,16 @@
       elements.constructionSequenceInfoDialog.addEventListener('close', () => {
         elements.constructionSequenceInfoButton.focus();
       });
-      elements.expandConstructionSequencePhasesButton.addEventListener('click', () => {
-        setConstructionSequencePhasesOpen(true);
+      elements.constructionSequencePhaseToggle.addEventListener('click', () => {
+        setConstructionSequencePhaseCatalogOpen(elements.constructionSequencePhaseCatalog.hidden, true);
       });
-      elements.collapseConstructionSequencePhasesButton.addEventListener('click', () => {
-        setConstructionSequencePhasesOpen(false);
-      });
-      elements.constructionSequencePhaseRail.addEventListener('click', (event) => {
-        const button = event.target.closest('[data-sequence-phase-target]');
-        if (!button) return;
-        const target = document.getElementById(button.dataset.sequencePhaseTarget || '');
-        if (!target) return;
-        target.open = true;
-        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      });
+      elements.constructionSequencePhaseList.addEventListener('toggle', (event) => {
+        const openedDetail = event.target;
+        if (!(openedDetail instanceof HTMLDetailsElement) || !openedDetail.matches('[data-sequence-phase-detail]') || !openedDetail.open) return;
+        elements.constructionSequencePhaseList.querySelectorAll('[data-sequence-phase-detail]').forEach((detail) => {
+          if (detail !== openedDetail) detail.open = false;
+        });
+      }, true);
 
       elements.ifcFileInput.addEventListener('change', () => {
         const files = Array.from(elements.ifcFileInput.files || []);
@@ -248,6 +243,7 @@
       } else if (constructionSequenceLoadError) {
         renderConstructionSequenceOverviewError(constructionSequenceLoadError);
       }
+      setConstructionSequencePhaseCatalogOpen(false);
       const dialog = elements.constructionSequenceInfoDialog;
       if (typeof dialog.showModal === 'function') {
         if (!dialog.open) dialog.showModal();
@@ -264,7 +260,6 @@
 
       if (!phases.length) {
         elements.constructionSequenceOverviewCount.textContent = 'Geen fasen gevonden';
-        elements.constructionSequencePhaseRail.innerHTML = '';
         elements.constructionSequencePhaseList.innerHTML = '<p class="sequence-overview-loading">Geen fasen gevonden in bouwvolgorde_nlsfb.json.</p>';
         return;
       }
@@ -278,15 +273,6 @@
       const totalSteps = phases.reduce((total, phase) => total + (Array.isArray(phase.stappen) ? phase.stappen.length : 0), 0);
 
       elements.constructionSequenceOverviewCount.textContent = `${phases.length} ${phases.length === 1 ? 'fase' : 'fasen'} · ${totalSteps} ${totalSteps === 1 ? 'stap' : 'stappen'}`;
-      elements.constructionSequencePhaseRail.innerHTML = phases.map((phase, index) => {
-        const phaseNumber = padSequenceNumber(phase.fase_id, phaseWidth);
-        const targetId = `construction-sequence-phase-${index + 1}`;
-        return `
-          <button class="sequence-phase-rail-item" type="button" data-sequence-phase-target="${targetId}" title="${escapeHtml(String(phase.fase_naam || ''))}">
-            <span>${escapeHtml(phaseNumber)}</span>
-            <strong>${escapeHtml(String(phase.fase_naam || `Fase ${phaseNumber}`))}</strong>
-          </button>`;
-      }).join('');
 
       elements.constructionSequencePhaseList.innerHTML = phases.map((phase, index) => {
         const phaseNumber = padSequenceNumber(phase.fase_id, phaseWidth);
@@ -322,7 +308,7 @@
         }).join('');
 
         return `
-          <details class="sequence-phase-detail" id="${targetId}" data-sequence-phase-detail open>
+          <details class="sequence-phase-detail" id="${targetId}" data-sequence-phase-detail>
             <summary>
               <span class="sequence-phase-number">${escapeHtml(phaseNumber)}</span>
               <span class="sequence-phase-summary-text">
@@ -339,7 +325,6 @@
 
     function renderConstructionSequenceOverviewError(error) {
       elements.constructionSequenceOverviewCount.textContent = 'Niet beschikbaar';
-      elements.constructionSequencePhaseRail.replaceChildren();
       elements.constructionSequencePhaseList.replaceChildren();
       const state = document.createElement('p');
       state.className = 'sequence-overview-loading is-error';
@@ -348,10 +333,26 @@
       elements.constructionSequencePhaseList.append(state);
     }
 
-    function setConstructionSequencePhasesOpen(open) {
+    function closeConstructionSequencePhaseDetails() {
       elements.constructionSequencePhaseList.querySelectorAll('[data-sequence-phase-detail]').forEach((detail) => {
-        detail.open = open;
+        detail.open = false;
       });
+    }
+
+    function setConstructionSequencePhaseCatalogOpen(open, scrollIntoView = false) {
+      const shouldOpen = Boolean(open);
+      elements.constructionSequencePhaseCatalog.hidden = !shouldOpen;
+      elements.constructionSequencePhaseToggle.setAttribute('aria-expanded', String(shouldOpen));
+      elements.constructionSequencePhaseToggle.classList.toggle('is-open', shouldOpen);
+      if (!shouldOpen) {
+        closeConstructionSequencePhaseDetails();
+        return;
+      }
+      if (scrollIntoView) {
+        requestAnimationFrame(() => {
+          elements.constructionSequencePhaseCatalog.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        });
+      }
     }
 
     function constructionSequenceScopeLabel(value) {
@@ -372,6 +373,7 @@
     }
 
     function closeConstructionSequenceInfo() {
+      setConstructionSequencePhaseCatalogOpen(false);
       const dialog = elements.constructionSequenceInfoDialog;
       if (typeof dialog.close === 'function' && dialog.open) dialog.close();
       else {
