@@ -159,8 +159,8 @@ summary { cursor: pointer; color: var(--muted); font-size: 13px; font-weight: 70
 .settings-card { padding: 16px; box-shadow: none; }
 .settings-card-attributes { grid-column: span 3; }
 .settings-card-properties { grid-column: span 4; }
-.settings-card-classifications { grid-column: span 5; }
-.settings-card-build { grid-column: span 2; }
+.settings-card-classifications { grid-column: span 3; }
+.settings-card-build { grid-column: span 4; }
 #settingsError { grid-column: 1 / -1; }
 .section-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
 .section-heading h2 { margin-bottom: 3px; font-size: 18px; letter-spacing: -0.018em; }
@@ -190,6 +190,36 @@ summary { cursor: pointer; color: var(--muted); font-size: 13px; font-weight: 70
 .section-heading-compact { margin-bottom: 9px; }
 .section-title-with-info { display: flex; align-items: center; gap: 7px; }
 .section-title-with-info h2 { margin: 0; }
+.build-sequence-heading { align-items: center; }
+.toggle-setting-inline { width: auto; min-width: 202px; margin: 0; border: 0; background: transparent; padding: 0; }
+.sequence-settings-preview {
+  display: grid; grid-template-columns: minmax(118px, 1fr) auto minmax(118px, 1fr) auto minmax(190px, 1.28fr);
+  align-items: stretch; gap: 8px; border: 1px solid var(--line); border-radius: 12px 12px 12px 4px;
+  background: linear-gradient(180deg, #fbfcfb, #f5f8f6); padding: 10px;
+}
+.sequence-settings-source, .sequence-settings-result {
+  display: grid; min-width: 0; min-height: 118px; align-content: center; justify-items: center; text-align: center;
+  border-radius: 10px 10px 10px 3px; padding: 8px;
+}
+.sequence-settings-source { border: 1px solid var(--line); background: var(--surface-muted); }
+.sequence-settings-icon { width: 47px; height: 38px; margin-bottom: 3px; stroke: #577870; stroke-width: 2; stroke-linejoin: round; }
+.sequence-settings-source > span, .sequence-settings-result > span {
+  color: var(--muted); font-size: 8px; font-weight: 820; letter-spacing: .04em; text-transform: uppercase;
+}
+.sequence-settings-source strong, .sequence-settings-result strong { display: block; margin: 2px 0 0; font-size: 15px; letter-spacing: -.02em; }
+.sequence-settings-source small, .sequence-settings-result small { display: block; margin-top: 1px; font-size: 8.5px; line-height: 1.2; }
+.sequence-settings-operator { align-self: center; color: var(--accent); font-size: 19px; font-weight: 850; }
+.sequence-settings-arrow { font-size: 22px; }
+.sequence-settings-result-wrap { display: grid; grid-template-rows: 1fr auto; gap: 6px; min-width: 0; }
+.sequence-settings-result { min-height: 0; background: linear-gradient(145deg, var(--accent), #04594f); color: #fff; }
+.sequence-settings-result > span { color: rgba(255,255,255,.72); }
+.sequence-settings-result small { color: rgba(255,255,255,.88); }
+.sequence-settings-code-key { display: grid; grid-template-columns: .72fr 1.45fr .72fr; gap: 5px; }
+.sequence-settings-code-key > div {
+  display: grid; border-radius: 7px 7px 7px 2px; background: var(--accent-soft); padding: 5px 6px; text-align: center;
+}
+.sequence-settings-code-key strong { color: var(--accent-hover); font-size: 10px; font-variant-numeric: tabular-nums; }
+.sequence-settings-code-key span { color: var(--muted); font-size: 7px; font-weight: 760; text-transform: uppercase; }
 .info-icon-button {
   display: inline-grid; width: 25px; height: 25px; place-items: center; flex: 0 0 auto;
   border: 1px solid #9fc8c0; border-radius: 50%; background: var(--accent-soft); color: var(--accent); padding: 0;
@@ -347,7 +377,8 @@ summary { cursor: pointer; color: var(--muted); font-size: 13px; font-weight: 70
 @media (max-width: 1180px) {
   .settings-stack { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .settings-card-attributes, .settings-card-properties { grid-column: 1 / -1; }
-  .settings-card-classifications, .settings-card-build { grid-column: span 1; }
+  .settings-card-classifications, .settings-card-build { grid-column: 1 / -1; }
+  .sequence-settings-preview { grid-template-columns: minmax(140px, 1fr) auto minmax(140px, 1fr) auto minmax(220px, 1.2fr); }
 }
 @media (max-width: 930px) {
   .hero-grid { grid-template-columns: 1fr; gap: 24px; }
@@ -376,6 +407,12 @@ summary { cursor: pointer; color: var(--muted); font-size: 13px; font-weight: 70
   .settings-open .app-shell { width: min(100% - 20px, 1120px); }
   .settings-stack { grid-template-columns: 1fr; }
   .settings-card-attributes, .settings-card-properties, .settings-card-classifications, .settings-card-build { grid-column: 1; }
+  .build-sequence-heading { align-items: stretch; }
+  .toggle-setting-inline { width: 100%; min-width: 0; border: 1px solid var(--line); background: var(--surface-muted); padding: 8px 10px; }
+  .sequence-settings-preview { grid-template-columns: 1fr; gap: 6px; }
+  .sequence-settings-source, .sequence-settings-result { min-height: 104px; }
+  .sequence-settings-operator { justify-self: center; transform: rotate(90deg); line-height: 1; }
+  .sequence-settings-result-wrap { width: 100%; }
   .classification-alias-list { grid-template-columns: 1fr; }
   .form-row { grid-template-columns: 1fr; }
   .form-row .button { width: 100%; }

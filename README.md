@@ -103,6 +103,10 @@ Objecten met een ontbrekende NL-SfB code en objecten met een code die niet in `n
 - code `XX`
 - omschrijving `Geen of onbekende NL-SfB codering`
 
+## Bouwvolgorde in de instellingen
+
+Het onderdeel Bouwvolgorde toont in de geavanceerde instellingen direct een compact voorbeeld van de berekening: NL-SfB Tabel 1 plus de Z hoogte van de bouwlaag leidt tot de bouwvolgordecode. De informatieknop opent het uitgebreide overzicht met fasen en stappen.
+
 ## Bouwvolgorde
 
 In de geavanceerde instellingen staat de optie `Voeg bouwvolgorde toe`. Deze optie staat standaard uit. Naast de titel staat een informatieknop. Die opent eerst alleen de compacte visuele uitleg waarin de NL-SfB code en de Z hoogte worden samengevoegd tot één bouwvolgordecode. In het onderdeel dat de code opdeelt kan vervolgens op `fase` worden geklikt. Pas dan verschijnt de actuele fasenindeling uit `bouwvolgorde_nlsfb.json`. Alle fasen staan standaard ingeklapt. Door één fase te openen worden de stappen van die fase in volgorde getoond, inclusief het codepatroon, de gekoppelde NL-SfB codes en de gebruikte bouwlaagselectie. Bij het openen van een andere fase wordt de vorige weer gesloten. Wanneer de JSON wordt aangepast, verandert dit overzicht automatisch mee. Alle regels in het korte volgordevoorbeeld hebben dezelfde weergave; er wordt geen willekeurige stap uitgelicht. De uitleg vermeldt ook dat code en omschrijving in het eigenschappen tabje en in de classificatie `Bouwvolgorde` worden geplaatst. De drie codeonderdelen `fase`, `Z in mm` en `stap` staan over de volledige breedte exact onder de donkergroene resultaatkaart.
@@ -211,3 +215,7 @@ Omschrijving: Geen bouwvolgorde ingesteld voor deze NL-SfB code
 
 Ook deze waarden zijn in de JSON aanpasbaar.
 
+
+### Compact voorbeeld in de instellingen
+
+De kaart `Bouwvolgorde` gebruikt op brede schermen meer ruimte dan de classificatiekaart. In de kaart staat direct een compact voorbeeld van de berekening `NL-SfB code + Z hoogte = bouwvolgordecode`, inclusief de onderdelen fase, Z in millimeters en stap. De informatieknop opent nog steeds de volledige uitleg met alle fasen en stappen.
