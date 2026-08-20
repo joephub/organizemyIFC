@@ -2,11 +2,11 @@
 
 Een statische webapp die aanwezige IFC informatie bundelt in één nieuw eigenschappen tabje. Eén of meer IFC modellen kunnen in dezelfde verwerking worden geselecteerd. De verwerking gebeurt volledig in de browser.
 
-## Versie 31
+## Versie 1.0
 
-Het hoofdscherm heeft meer witruimte gekregen. De uploadkaart staat verder onder het openingsdeel en de bouwvolgordemodule begint duidelijk lager. De uploadkaart is bovendien smaller, staat gecentreerd en hoeft niet aan de rechter uitlijnlijn te eindigen.
+Dit is de eerste volwaardige release van **Organize my IFC**. De website, instellingen en IFC verwerking zijn inhoudelijk gelijk aan de laatst goedgekeurde versie. De applicatieversie die in `Cpset_OrganizeMyIFC` wordt vastgelegd is vanaf deze release `1.0`.
 
-De volledig opgebouwde woning met de bouwvolgordecode blijft in de animatie ongeveer vijf seconden zichtbaar voordat de animatie opnieuw begint.
+Versie 1.0 omvat onder andere lokale verwerking van IFC 2x3, IFC 4 en IFC 4x3, verwerking van meerdere modellen, bundeling van IFC informatie, harmonisatie van NL-SfB Tabel 1, een tweecijferige classificatie en de optionele bouwvolgorde.
 
 ## Direct op GitHub Pages plaatsen
 
@@ -53,6 +53,7 @@ De meegeleverde bron is één op één gekopieerd. De parser accepteert ook de a
 - `worker.js`: lokale verwerking en export van IFC
 - `nlsfb2021.json`: officiële NL-SfB namen en codes
 - `bouwvolgorde_nlsfb.json`: vaste bouwvolgorde per NL-SfB code en bouwlaag
+- `VERSION`: huidige applicatieversie
 
 ## Bouwvolgorde op het hoofdscherm
 
